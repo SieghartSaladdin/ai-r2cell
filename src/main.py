@@ -1,6 +1,7 @@
 import sys
 import os
-from fastapi import FastAPI, HTTPException
+import shutil
+from fastapi import FastAPI, HTTPException, UploadFile, File
 from pydantic import BaseModel
 import uvicorn
 
@@ -8,7 +9,8 @@ import uvicorn
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from langchain_core.messages import HumanMessage
-from src.agents.simple_chatbot import chatbot_graph
+from src.agents.rag_agent import rag_graph
+from src.core.vectorstore import ingest_all_pdfs
 
 app = FastAPI(
     title="LangGraph Chatbot API",
@@ -46,7 +48,7 @@ async def chat(request: ChatRequest):
         input_state = {"messages": [HumanMessage(content=request.message)]}
         
         # 3. Invoke the compiled graph with persistent thread context
-        response_state = chatbot_graph.invoke(input_state, config=config)
+        response_state = rag_graph.invoke(input_state, config=config)
         
         # 4. Extract the last AI response
         last_message = response_state["messages"][-1]
@@ -57,6 +59,43 @@ async def chat(request: ChatRequest):
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Graph execution failed: {str(e)}")
+
+@app.post("/upload-doc")
+async def upload_doc(file: UploadFile = File(...)):
+    """
+    POST route to upload a PDF document and trigger dynamic vector store indexing.
+    """
+    if not file.filename.lower().endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="Only PDF files are allowed")
+
+    # Define the destination directory (src/data/)
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    data_dir = os.path.join(base_dir, "data")
+    os.makedirs(data_dir, exist_ok=True)
+    
+    file_path = os.path.join(data_dir, file.filename)
+    
+    try:
+        # Save file to src/data/
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to save the uploaded file: {str(e)}")
+        
+    try:
+        # Trigger dynamic vector store ingestion
+        ingest_all_pdfs()
+    except Exception as e:
+        # Cleanup the file if indexing failed to prevent corrupted or unindexed files in the directory
+        if os.path.exists(file_path):
+            os.remove(file_path)
+        raise HTTPException(status_code=500, detail=f"Failed to index PDF document: {str(e)}")
+
+    return {
+        "status": "success",
+        "filename": file.filename,
+        "message": "Document uploaded and embedded successfully."
+    }
 
 if __name__ == "__main__":
     # Start the server on port 8000 when run directly
