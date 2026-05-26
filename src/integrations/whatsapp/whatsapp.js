@@ -18,6 +18,38 @@ const KEEP_ALIVE_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 let lastActivityTime = Date.now();
 let socketInstance = null;
 
+/**
+ * Splits a long AI chatbot response into multiple logical messages (bubbles)
+ * to simulate a real human typing separate messages on WhatsApp.
+ * 
+ * Splits strictly by double newlines (\n\n) to keep lists/paragraphs coherent.
+ * Filters out empty bubbles.
+ */
+function splitIntoHumanMessages(text) {
+    if (!text) return [];
+    
+    // Split by double newlines (one or more blank lines)
+    const paragraphs = text.split(/\n\n+/);
+    
+    return paragraphs
+        .map(p => p.trim())
+        .filter(p => p.length > 0);
+}
+
+const INTERNAL_STATUS_URL = 'http://127.0.0.1:8000/api/internal/status';
+
+async function pushStatusToIPC(state, qr = "", phone = "") {
+    try {
+        await axios.post(INTERNAL_STATUS_URL, {
+            state: state,
+            qr: qr,
+            phone: phone
+        });
+    } catch (err) {
+        // Silently fail if IPC is not yet up
+    }
+}
+
 async function connectToWhatsApp() {
     // 1. Setup multi-file auth credentials folder
     const authFolder = path.join(__dirname, 'auth_info_baileys');
@@ -27,6 +59,7 @@ async function connectToWhatsApp() {
     const { version, isLatest } = await fetchLatestBaileysVersion();
     console.log(`Using WhatsApp Web v${version.join('.')}, isLatest: ${isLatest}`);
     console.log("Initializing WhatsApp Baileys client...");
+    await pushStatusToIPC("CONNECTING");
 
     // 2. Create socket connection with low logging verbosity and dynamic version
     const sock = makeWASocket({
@@ -46,6 +79,7 @@ async function connectToWhatsApp() {
             console.log("\nScan this QR code in your WhatsApp app to log in:");
             // Generate QR code directly in the terminal console
             qrcode.generate(qr, { small: true });
+            await pushStatusToIPC("NEED SCAN", qr);
         }
 
         if (connection === 'close') {
@@ -53,6 +87,8 @@ async function connectToWhatsApp() {
             const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
             console.log(`Connection closed. Status code: ${statusCode}. Reconnecting: ${shouldReconnect}`);
             
+            await pushStatusToIPC("DISCONNECTED");
+
             if (shouldReconnect) {
                 // Re-trigger connection loop
                 setTimeout(connectToWhatsApp, 5000);
@@ -62,6 +98,8 @@ async function connectToWhatsApp() {
             console.log('  WhatsApp Bot Connection Established!');
             console.log('======================================\n');
             
+            await pushStatusToIPC("CONNECTED", "", sock.user.id.split(':')[0]);
+
             lastActivityTime = Date.now();
             
             // Delay presence update slightly to ensure WhatsApp profile is fully synced and avoid warning logs
@@ -115,14 +153,11 @@ async function connectToWhatsApp() {
             lastActivityTime = Date.now();
 
             try {
-                // 1. Let sender know we are typing
+                // 1. Let sender know we are typing while we call the backend
                 await sock.sendPresenceUpdate('composing', senderJid);
                 console.log(`[Presence] Bot status set to 'composing' (typing indicator) for ${senderJid}`);
 
-                // 2. Introduce a realistic 3-second typing delay
-                await new Promise(resolve => setTimeout(resolve, 3000));
-
-                // 3. Send request to Python FastAPI LangGraph backend
+                // 2. Send request to Python FastAPI LangGraph backend
                 // Map the WhatsApp sender JID to our session_id to maintain session continuity
                 const response = await axios.post(BACKEND_URL, {
                     message: trimmedText,
@@ -130,14 +165,38 @@ async function connectToWhatsApp() {
                 });
 
                 const botResponse = response.data.response;
-                console.log(`FastAPI chatbot reply: "${botResponse}"`);
+                console.log(`FastAPI chatbot reply:\n"${botResponse}"`);
 
-                // 4. Stop composing presence
+                // 3. Stop initial composing presence
                 await sock.sendPresenceUpdate('paused', senderJid);
 
-                // 5. Send response back to the user on WhatsApp
-                await sock.sendMessage(senderJid, { text: botResponse });
-                console.log(`[Message-Sent] Reply sent to ${senderJid}`);
+                // 4. Split the response into natural, human-like bubbles
+                const messagesToSend = splitIntoHumanMessages(botResponse);
+                console.log(`Split response into ${messagesToSend.length} separate bubbles.`);
+
+                // 5. Send each bubble sequentially with a realistic typing delay
+                for (let i = 0; i < messagesToSend.length; i++) {
+                    const currentBubble = messagesToSend[i];
+                    
+                    // Show typing indicator
+                    await sock.sendPresenceUpdate('composing', senderJid);
+                    
+                    // Calculate a dynamic delay proportional to the character length:
+                    // 20ms per character, clamped between 1000ms and 3500ms
+                    const typingDelay = Math.min(3500, Math.max(1000, currentBubble.length * 20));
+                    console.log(`[Bubble ${i+1}/${messagesToSend.length}] Typing duration: ${typingDelay}ms...`);
+                    await new Promise(resolve => setTimeout(resolve, typingDelay));
+                    
+                    // Stop typing indicator and send the bubble
+                    await sock.sendPresenceUpdate('paused', senderJid);
+                    await sock.sendMessage(senderJid, { text: currentBubble });
+                    console.log(`[Bubble ${i+1}/${messagesToSend.length}] Sent!`);
+                    
+                    // Add a natural pause between message bubbles to simulate standard human behavior
+                    if (i < messagesToSend.length - 1) {
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                    }
+                }
                 
                 // 6. Update activity time and refresh available presence status
                 lastActivityTime = Date.now();

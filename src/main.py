@@ -2,6 +2,7 @@ import sys
 import os
 import shutil
 from fastapi import FastAPI, HTTPException, UploadFile, File
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import uvicorn
 
@@ -18,6 +19,15 @@ app = FastAPI(
     version="1.0.0"
 )
 
+# 0. Add CORS middleware so Vue frontend can communicate with FastAPI
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"], # For production, restrict this to your actual Vue frontend URL
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 # Input Request Schema
 class ChatRequest(BaseModel):
     message: str
@@ -28,9 +38,46 @@ class ChatResponse(BaseModel):
     response: str
     session_id: str
 
+# IPC Internal Status State
+global_baileys_state = {
+    "state": "DOWN",
+    "qr": "",
+    "phone": ""
+}
+
+class BaileysStatus(BaseModel):
+    state: str
+    qr: str = ""
+    phone: str = ""
+
 @app.get("/")
 def read_root():
     return {"status": "online", "model": "gemma4:31b-cloud", "engine": "LangGraph"}
+
+# IPC Endpoints for TUI monitoring
+@app.post("/api/internal/status")
+async def update_baileys_status(status: BaileysStatus):
+    """
+    Webhook for Baileys Node.js process to push its connection state,
+    so the Python TUI can read it.
+    """
+    global global_baileys_state
+    global_baileys_state["state"] = status.state
+    if status.qr:
+        global_baileys_state["qr"] = status.qr
+    if status.phone:
+        global_baileys_state["phone"] = status.phone
+    return {"success": True}
+
+@app.get("/api/internal/status")
+async def get_baileys_status():
+    """
+    Endpoint for the TUI to poll the current state of Baileys/FastAPI.
+    """
+    return {
+        "fastapi": "RUNNING",
+        "baileys": global_baileys_state
+    }
 
 @app.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
