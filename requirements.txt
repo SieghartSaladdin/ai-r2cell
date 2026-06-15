@@ -11,3 +11,6 @@ langchain-chroma>=0.1.0
 pypdf>=4.0.0
 langchain-community>=0.2.0
 python-multipart>=0.0.7
+rich>=13.0
+prompt_toolkit>=3.0
+qrcode[pil]>=7.0
