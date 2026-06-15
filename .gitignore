@@ -24,3 +24,6 @@ checkpoints.db*
 .idea/
 .DS_Store
 Thumbs.db
+
+# Logs
+logs/

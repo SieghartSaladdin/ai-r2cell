@@ -1,0 +1,187 @@
+# R2CELL Service Gateway & TUI Dashboard
+
+Welcome to the R2CELL Service Gateway and Terminal UI (TUI) Dashboard. This project provides a unified console control center to run, monitor, and manage the three core services that power the WhatsApp AI bot system:
+1. **FastAPI Backend** (Python uvicorn API & metrics router)
+2. **WhatsApp Gateway** (Node.js/Baileys API connector)
+3. **Web Dashboard** (Vue 3/Vite frontend client)
+
+---
+
+## 🤖 The R2CELL AI Engine (LangChain & LangGraph)
+
+At the heart of the R2CELL system is a sophisticated, stateful **Retrieval-Augmented Generation (RAG)** conversational AI built on top of **LangChain** and **LangGraph**. The AI acts as a digital customer service and sales agent, designed to represent R2CELL with high professionalism, polite behavior, and 100% factual accuracy.
+
+### ⛓️ LangGraph Workflow Architecture
+Unlike standard stateless chatbots, the AI engine is built as an orchestration graph using LangGraph. This ensures a clean separation of concerns and robust multi-step reasoning capabilities.
+
+```mermaid
+graph TD
+    START -->|User Message| retrieve["Retrieval Node (ChromaDB)"]
+    retrieve -->|Context Injected| call_model["Generation Node (Ollama LLM)"]
+    call_model -->|Factual Response| END
+```
+
+1. **Retrieval Node (`retrieve`)**:
+   - Extracts the latest user query.
+   - Embeds the query using the `embeddinggemma:latest` model via Ollama.
+   - Performs a similarity search over the persistent **Chroma vector database** to retrieve the most relevant specs, prices, catalog details, or policy terms.
+   - Formats and structures the extracted text chunks as a context block for the next node.
+
+2. **Generation Node (`call_model`)**:
+   - Prepares the conversation history and prepends the official **R2CELL system prompt**.
+   - Dynamically injects the retrieved context block.
+   - Invokes the `gemma4:31b-cloud` model via **LangChain Ollama** (`ChatOllama`) with a low temperature configuration (`0.1`) to ensure strict factual adherence and completely prevent hallucinations.
+
+3. **Checkpointer Memory Persistence**:
+   - Uses `SqliteSaver` checkpointer memory to bind conversations to specific thread IDs (mapped directly to the user's WhatsApp phone identifier or JID).
+   - This provides persistent conversation sessions so the agent remembers previous customer interactions across restarts.
+
+---
+
+## ✨ Core AI & System Features
+
+### 📖 Dynamic Document Ingestion (RAG)
+* **Chroma Vector Store**: Document embeddings are computed and stored locally in Chroma DB, making the AI's search lightning fast.
+* **On-the-Fly Document Upload**: Through the web dashboard or direct API, administrators can upload official catalogs, price sheets, and company profiles in PDF format.
+* **Auto-Reindexing Pipeline**: When a PDF is uploaded, the system parses the document (`PyPDFLoader`), breaks it into logical chunks (`RecursiveCharacterTextSplitter`), updates embeddings, and re-indexes the Chroma database automatically.
+
+### 🛡️ Guardrails & Factual Adherence
+* **Anti-Hallucination Prompts**: The generation model is heavily restricted. If a customer asks about a price, specifications, or policies not covered in the retrieved official context, the bot will gracefully decline to speculate, and offer to escalate to human support.
+* **Polite, Sales-Centric Persona**: Programmed to maintain a helpful, warm tone focused on certified pre-owned smartphones (such as iPhones), mobile accessories, and wholesale/retail distribution.
+
+### 💬 Human-like Conversational Pacing on WhatsApp
+* **Message Bubble Splitting**: Rather than dumping long blocks of text on customers, the WhatsApp gateway dynamically splits the AI's response by paragraphs into multiple sequential chat bubbles.
+* **Typing Indicator Simulation**: Sends a `composing` (typing...) presence update to the sender.
+* **Dynamic Pacing Delays**: Calculates realistic typing durations proportional to the length of each bubble (e.g. 20ms per character, clamped between 1s and 3.5s) and adds natural pauses between messages to mimic a live customer service agent.
+
+---
+
+## 📸 Dashboard Preview
+
+The TUI features a modern, clean dark-mode interface styled with high-contrast pastel colors (blue, green, orange, red) to provide glanceable feedback:
+
+* **Left Panel:** Service health cards with reactive status dots, metrics indicators, action toggles, and shortcut links.
+* **Right Panel:** Tabbed logging pane displaying real-time tail logs for the API, WhatsApp, and Web services.
+* **Popup Overlays:** Includes a reactive WhatsApp scan modal (with timer and instructions), action confirmations, and a help window.
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+* **Python 3.10+** (with virtual environment)
+* **Node.js 18+** (and npm)
+* **WhatsApp** on a mobile device
+
+### Installation
+1. Clone the repository and navigate to the project directory:
+   ```bash
+   cd ai-r2cell
+   ```
+2. Set up the Python virtual environment and install dependencies:
+   ```bash
+   python -m venv venv
+   # On Windows:
+   .\venv\Scripts\Activate.ps1
+   # On Unix:
+   source venv/bin/activate
+
+   pip install -r requirements.txt
+   ```
+3. Install Node.js dependencies for the WhatsApp Gateway:
+   ```bash
+   npm install
+   ```
+4. Install Node.js dependencies for the Web Dashboard:
+   ```bash
+   cd admin-dashboard
+   npm install
+   cd ..
+   ```
+
+### Running the Dashboard
+Launch the unified dashboard directly from your terminal:
+```bash
+python tui.py
+```
+This automatically boots all three services in isolated background processes and starts streaming their logs.
+
+---
+
+## 🛠 Keyboard Shortcuts
+
+Press these keys at any time while the TUI is focused to navigate and trigger actions:
+
+| Key | Action | Description |
+|:---:|:---|:---|
+| `q` | **Quit** | Terminate the TUI and kill all active child/spawned services gracefully. |
+| `r` | **Restart Services** | Hard stop and restart all three gateway services. |
+| `1` | **FastAPI Logs** | Switch the active log pane view to the FastAPI Backend logs. |
+| `2` | **WhatsApp Logs** | Switch the active log pane view to the Baileys Gateway logs. |
+| `3` | **Web Logs** | Switch the active log pane view to the Vue Frontend logs. |
+| `c` | **Clear Log** | Clear the contents of the log file for the active tab. |
+| `?` | **Help** | Display the Help Overlay listing keyboard shortcuts. |
+| `Esc` | **Close Overlay** | Close any active modal (Help, QR Code, or Reset Confirmation). |
+
+---
+
+## 🔍 Core Features & Functionality
+
+### 1. Per-Service Action Toggles & Port Listening
+* Each service card has an individual **Start/Stop** toggle button.
+* If a service is stopped, its status changes to `offline` and its status dot turns grey.
+* Clicking **Start** spawns the service in the background and sets its status dot to yellow (`booting` / `connecting`).
+* When active, the TUI queries endpoints to check connection health, changing the dot to green (`online` / `running` / `authenticated`).
+
+### 2. Connection Health & Live Metrics Indicators
+The dashboard gathers live telemetry from the services and updates the UI cards in real time:
+* **FastAPI Backend:** Displays total HTTP request count (excluding poll requests) and the time elapsed since the last request (e.g. `2 reqs, last: 12s ago`).
+* **WhatsApp Gateway:** Displays current connection uptime, message transmission count (e.g. `10m 5s, 42 msgs`), and details on configuration/network errors.
+* **Web Dashboard:** Monitors the Vite hot-reloading dev server and reports active client browser connections.
+
+### 3. Integrated Real-Time Logging System
+* Logs for each service are piped into central, designated log files inside the `logs/` folder (`fastapi.log`, `baileys.log`, `frontend.log`).
+* **TUI Logging & Standalone Compatibility:** Spawning services via the TUI injects `R2CELL_TUI=true` into the environment. When detected, the service prints output straight to stdout (which the TUI intercepts and writes to the log file). When services are run manually via the console, they write directly to their log files to prevent log duplication.
+* **Tailing Engine:** A background asyncio worker reads new log lines every 300ms, coloring lines containing `ERROR`/`FAIL` (red), `WARN` (yellow), and `SUCCESS` (green) for quick diagnostic readability.
+
+### 4. Interactive QR Takeover Modal
+* When the Baileys connector enters the `QR_PENDING` state, the TUI intercepts the state change and automatically overlays a **prominent QR Code Modal Screen**.
+* **Double-Width Half-Blocks:** The QR code is printed using Unicode block elements (`▀▀`, `▄▄`, `██`, `  `). This double-width rendering ensures a perfect square aspect ratio on all terminal fonts and line layouts.
+* **Color Mapping:** The QR code blocks are rendered in black text on a white widget background. This matches the standard QR code structure, ensuring it scans instantly with any mobile device camera.
+* **Auto-refresh and Timeout:** Features a **60-second countdown timer** that ticks down to inform the user of QR freshness. The timer automatically resets to 60s whenever Baileys publishes a new QR string, and the modal automatically dismisses once the connection becomes `AUTHENTICATED`.
+
+### 5. Secure Session Reset Dialog
+* Clicking the **Reset WhatsApp** button prompts the user with a confirmation screen.
+* Confirming the reset fires a `POST /wa/reset-session` request to the backend.
+* The backend stops the running Node process by PID, wipes the `auth_info_baileys` credentials folder clean, and restarts Node to display a fresh scan QR code.
+
+### 6. Unexpected Disconnect Flash Alerts
+* If the WhatsApp state transitions from `AUTHENTICATED` to `DISCONNECTED` unexpectedly (e.g. when logged out from linked devices on a phone), the TUI acts immediately:
+  * Triggers a warning toast notification at the bottom right.
+  * Flashes the border of the WhatsApp Gateway card in red with a double-line border styling (`.flash-error`) to capture the user's attention.
+
+---
+
+## 📁 File Structure
+
+```plaintext
+ai-r2cell/
+├── logs/                    # Central log directory
+│   ├── fastapi.log          # FastAPI server logs
+│   ├── baileys.log          # Baileys gateway logs
+│   └── frontend.log         # Web frontend dev logs
+│
+├── src/
+│   ├── integrations/
+│   │   └── whatsapp/
+│   │       └── whatsapp.js  # Node.js Baileys connector
+│   │
+│   ├── main.py              # FastAPI server & status routes
+│   │
+│   └── tui/                 # Terminal UI module
+│       ├── app.py           # DashboardApp application driver
+│       ├── widgets.py       # Custom Modals, QR display, and confirmations
+│       └── theme.tcss       # Clean minimal dark-mode layout styling
+│
+└── tui.py                   # Terminal UI entrypoint script
+```

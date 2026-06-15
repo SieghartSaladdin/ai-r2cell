@@ -1,0 +1,14 @@
+{
+  "name": "ai-r2cell",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start:backend": "call venv\\Scripts\\activate.bat && uvicorn src.main:app --reload --host 0.0.0.0 --port 8000",
+    "start:frontend": "cd admin-dashboard && npm run dev",
+    "start:wa": "cd src\\integrations\\whatsapp && node whatsapp.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
