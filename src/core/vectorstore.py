@@ -123,3 +123,40 @@ def ingest_all_pdfs() -> None:
     except Exception as e:
         print(f"Fatal error during Chroma ingestion: {e}")
         raise e
+
+def ingest_single_pdf(pdf_path: str) -> None:
+    """
+    Loads, splits, and appends a single PDF file to the existing Chroma vector store.
+    """
+    if not os.path.exists(pdf_path):
+        raise FileNotFoundError(f"PDF file not found: {pdf_path}")
+    
+    loader = PyPDFLoader(pdf_path)
+    loaded_docs = loader.load()
+    if not loaded_docs:
+        print(f"No pages could be loaded from {pdf_path}")
+        return
+        
+    text_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=1000,
+        chunk_overlap=200
+    )
+    chunks = text_splitter.split_documents(loaded_docs)
+    
+    # Ensure source metadata uses the exact path
+    for chunk in chunks:
+        chunk.metadata["source"] = pdf_path
+        
+    store = get_vector_store()
+    store.add_documents(chunks)
+    print(f"Successfully ingested and indexed {len(chunks)} chunks from {os.path.basename(pdf_path)}.")
+
+def delete_single_pdf_embeddings(pdf_path: str) -> None:
+    """
+    Deletes the embedded chunks for a specific PDF from the Chroma vector store.
+    """
+    store = get_vector_store()
+    # Delete from Chroma using metadata filter
+    store._collection.delete(where={"source": pdf_path})
+    print(f"Deleted embeddings for {pdf_path} from vector store.")
+

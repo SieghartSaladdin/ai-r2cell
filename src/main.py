@@ -10,7 +10,8 @@ import signal
 import logging
 import asyncio
 from fastapi import FastAPI, HTTPException, UploadFile, File
-from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, StreamingResponse, FileResponse
+
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import uvicorn
@@ -20,7 +21,10 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from langchain_core.messages import HumanMessage
 from src.agents.rag_agent import rag_graph
-from src.core.vectorstore import ingest_all_pdfs
+from src.agents.rag_agent.graph import db_conn
+import sqlite3
+from src.core.vectorstore import ingest_all_pdfs, ingest_single_pdf, delete_single_pdf_embeddings
+
 
 # ── Unified Logging Setup ────────────────────────────
 os.makedirs("logs", exist_ok=True)
@@ -623,6 +627,120 @@ async def get_logs(service: str):
 
     return StreamingResponse(log_generator(), media_type="text/event-stream")
 
+@app.get("/api/chat/threads")
+async def list_chat_threads():
+    """
+    Get a list of all active conversation threads from the checkpoints database.
+    """
+    try:
+        cursor = db_conn.cursor()
+        # Fetch distinct thread_ids to avoid relying on a non-existent created_at column
+        cursor.execute("SELECT DISTINCT thread_id FROM checkpoints")
+        rows = cursor.fetchall()
+        
+        threads = []
+        for row in rows:
+            thread_id = row[0]
+            
+            # Skip internal session and default placeholder sessions to keep list clean
+            if thread_id.startswith("test_") or thread_id == "default-session":
+                continue
+                
+            try:
+                # Retrieve state to count messages and fetch the last message content
+                state = rag_graph.get_state({"configurable": {"thread_id": thread_id}})
+                messages = state.values.get("messages", []) if state.values else []
+                # Fetch checkpoint creation time from the LangGraph state object
+                last_active = state.created_at if hasattr(state, "created_at") else None
+                
+                last_msg_text = ""
+                last_msg_sender = ""
+                if messages:
+                    last_msg = messages[-1]
+                    last_msg_text = last_msg.content
+                    last_msg_sender = "AI" if last_msg.__class__.__name__ == "AIMessage" else "User"
+                
+                threads.append({
+                    "thread_id": thread_id,
+                    "last_active": last_active,
+                    "message_count": len(messages),
+                    "last_message": last_msg_text,
+                    "last_message_sender": last_msg_sender
+                })
+            except Exception as e:
+                # Fail-safe in case state parsing fails for a thread
+                threads.append({
+                    "thread_id": thread_id,
+                    "last_active": None,
+                    "message_count": 0,
+                    "last_message": "Error loading thread details",
+                    "last_message_sender": ""
+                })
+        
+        # Sort threads by last active timestamp descending
+        threads.sort(key=lambda x: str(x["last_active"] or ""), reverse=True)
+        return threads
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch conversation threads: {str(e)}")
+
+
+@app.get("/api/chat/threads/{thread_id}/messages")
+async def get_thread_messages(thread_id: str):
+    """
+    Retrieve all messages for a specific conversation session (thread_id).
+    """
+    try:
+        # Retrieve graph state
+        state = rag_graph.get_state({"configurable": {"thread_id": thread_id}})
+        messages = state.values.get("messages", []) if state.values else []
+        
+        serialized = []
+        for msg in messages:
+            # Check class name to differentiate human vs bot messages
+            sender = "bot" if msg.__class__.__name__ == "AIMessage" else "user"
+            serialized.append({
+                "sender": sender,
+                "text": msg.content,
+                "type": msg.__class__.__name__
+            })
+        return serialized
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch conversation history: {str(e)}")
+
+
+@app.delete("/api/chat/threads/{thread_id}")
+async def delete_chat_thread(thread_id: str):
+    """
+    Reset/Wipe the conversation history for a specific thread_id.
+    """
+    try:
+        cursor = db_conn.cursor()
+        # Delete from checkpoints and writes tables in SqliteSaver
+        cursor.execute("DELETE FROM checkpoints WHERE thread_id = ?", (thread_id,))
+        cursor.execute("DELETE FROM writes WHERE thread_id = ?", (thread_id,))
+        db_conn.commit()
+        return {"status": "success", "message": f"Conversation memory for '{thread_id}' has been reset."}
+    except Exception as e:
+        db_conn.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to reset memory: {str(e)}")
+
+
+@app.delete("/api/chat/threads")
+async def delete_all_chat_threads():
+    """
+    Reset/Wipe all conversation histories.
+    """
+    try:
+        cursor = db_conn.cursor()
+        cursor.execute("DELETE FROM checkpoints")
+        cursor.execute("DELETE FROM writes")
+        db_conn.commit()
+        return {"status": "success", "message": "All conversation memories have been reset."}
+    except Exception as e:
+        db_conn.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to reset all memories: {str(e)}")
+
+
 @app.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
     """
@@ -678,8 +796,8 @@ async def upload_doc(file: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail=f"Failed to save the uploaded file: {str(e)}")
         
     try:
-        # Trigger dynamic vector store ingestion
-        ingest_all_pdfs()
+        # Trigger single PDF vector store ingestion
+        ingest_single_pdf(file_path)
     except Exception as e:
         # Cleanup the file if indexing failed to prevent corrupted or unindexed files in the directory
         if os.path.exists(file_path):
@@ -691,6 +809,79 @@ async def upload_doc(file: UploadFile = File(...)):
         "filename": file.filename,
         "message": "Document uploaded and embedded successfully."
     }
+
+@app.get("/api/docs")
+def list_docs():
+    """
+    Lists all PDF files in the src/data directory.
+    """
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    data_dir = os.path.join(base_dir, "data")
+    if not os.path.exists(data_dir):
+        return []
+    
+    docs = []
+    for entry in os.scandir(data_dir):
+        if entry.is_file() and entry.name.lower().endswith(".pdf"):
+            stats = entry.stat()
+            docs.append({
+                "filename": entry.name,
+                "size": stats.st_size,
+                "modified_at": stats.st_mtime
+            })
+    # Sort by modification time, newest first
+    docs.sort(key=lambda x: x["modified_at"], reverse=True)
+    return docs
+
+@app.get("/api/docs/preview-json/{filename}")
+def get_pdf_json(filename: str):
+    """
+    Serves a PDF document as a base64 encoded JSON response to completely bypass IDM interception.
+    """
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    data_dir = os.path.join(base_dir, "data")
+    filename = os.path.basename(filename)
+    if not filename.lower().endswith(".pdf"):
+        filename += ".pdf"
+    file_path = os.path.join(data_dir, filename)
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="File not found")
+    
+    with open(file_path, "rb") as f:
+        pdf_bytes = f.read()
+        
+    base64_pdf = base64.b64encode(pdf_bytes).decode('utf-8')
+    return {"filename": filename, "data": base64_pdf}
+
+
+@app.delete("/api/docs/{filename}")
+def delete_doc(filename: str):
+    """
+    Deletes a PDF document from disk and removes its embeddings from Chroma.
+    """
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    data_dir = os.path.join(base_dir, "data")
+    filename = os.path.basename(filename)
+    file_path = os.path.join(data_dir, filename)
+    
+    # 1. Delete from ChromaDB
+    try:
+        delete_single_pdf_embeddings(file_path)
+    except Exception as e:
+        # Log error and continue with file deletion
+        print(f"Error deleting embeddings for {filename}: {e}")
+
+    # 2. Delete from disk
+    if os.path.exists(file_path):
+        try:
+            os.remove(file_path)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to delete file from disk: {str(e)}")
+    else:
+        raise HTTPException(status_code=404, detail="File not found on disk")
+        
+    return {"status": "success", "message": f"Successfully deleted {filename} and its embeddings."}
+
 
 if __name__ == "__main__":
     # Start the server on port 8000 when run directly

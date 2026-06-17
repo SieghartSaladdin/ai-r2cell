@@ -27,6 +27,14 @@ def _dot(status: str) -> tuple[str, str]:
     return "○", "#555566"
 
 
+# Service endpoint info
+SERVICE_URLS = {
+    "FastAPI": "http://localhost:8000",
+    "Baileys": "http://localhost:8000/qr",
+    "Frontend": "http://localhost:5173",
+}
+
+
 def render_status_bar(
     api_metrics: dict,
     wa_metrics: dict,
@@ -36,16 +44,16 @@ def render_status_bar(
     disconnect_warning: bool = False,
     warning_cycle: int = 0,
 ) -> Table:
-    """Render a compact 3-column status header."""
+    """Render a compact 3-column status header with service URLs."""
 
     grid = Table.grid(expand=True)
     grid.add_column(ratio=1)
     grid.add_column(ratio=1)
     grid.add_column(ratio=1)
 
-    # ── Build each column ─────────────────────────────
+    # ── Row 1: Status dots + uptime ───────────────────
 
-    def _col(label: str, status: str, uptime_start: float, extra: str = "") -> Text:
+    def _status_line(label: str, status: str, uptime_start: float, extra: str = "") -> Text:
         dot_char, color = _dot(status)
         t = Text()
         t.append(f"  {label}  ", style="bold #c8ccd4")
@@ -58,6 +66,18 @@ def render_status_bar(
             t.append(f"  {extra}", style="dim #555566")
         return t
 
+    # ── Row 2: URL info ───────────────────────────────
+
+    def _url_line(tag: str, status: str) -> Text:
+        t = Text()
+        url = SERVICE_URLS.get(tag, "")
+        is_up = status.upper() in ("ONLINE", "RUNNING", "CONNECTED", "AUTHENTICATED", "BOOTING", "CONNECTING", "QR_PENDING", "NEED SCAN")
+        if is_up and url:
+            t.append(f"  └ {url}", style="dim #555566")
+        else:
+            t.append(f"  └ {url}", style="dim #333344")
+        return t
+
     api_status = statuses.get("FastAPI", "offline")
     wa_status = statuses.get("Baileys", "offline")
     web_status = statuses.get("Frontend", "offline")
@@ -65,13 +85,18 @@ def render_status_bar(
     # WhatsApp QR hint
     wa_extra = ""
     if wa_status.upper() in ("QR_PENDING", "NEED SCAN"):
-        wa_extra = "→ /qr"
+        wa_extra = "scan QR!"
 
-    col1 = _col("FastAPI", api_status, uptimes.get("FastAPI", 0))
-    col2 = _col("WhatsApp", wa_status, uptimes.get("Baileys", 0), wa_extra)
-    col3 = _col("Web", web_status, uptimes.get("Frontend", 0))
+    col1 = _status_line("FastAPI", api_status, uptimes.get("FastAPI", 0))
+    col2 = _status_line("WhatsApp", wa_status, uptimes.get("Baileys", 0), wa_extra)
+    col3 = _status_line("Web", web_status, uptimes.get("Frontend", 0))
+
+    url1 = _url_line("FastAPI", api_status)
+    url2 = _url_line("Baileys", wa_status)
+    url3 = _url_line("Frontend", web_status)
 
     grid.add_row(col1, col2, col3)
+    grid.add_row(url1, url2, url3)
 
     # ── Wrap in outer container ───────────────────────
     outer = Table.grid(expand=True)
@@ -82,6 +107,7 @@ def render_status_bar(
     if disconnect_warning:
         style = "bold #ef4444" if warning_cycle % 2 == 0 and warning_cycle < 6 else "#ef4444"
         outer.add_row("")
-        outer.add_row(Text("  ⚠  WhatsApp disconnected — visit /qr to reconnect", style=style))
+        outer.add_row(Text("  ⚠  WhatsApp disconnected — visit http://localhost:8000/qr to reconnect", style=style))
 
     return outer
+
