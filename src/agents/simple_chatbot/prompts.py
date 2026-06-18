@@ -16,7 +16,7 @@ SYSTEM_PROMPT = (
     "- Nested formatting is allowed, e.g., *_bold italic_*, *~bold strikethrough~*\n"
     "- Blockquotes: Prefix lines with '> ', e.g., > *Bold Blockquote*\n"
     "- Lists: Use '- *Bold bullet*' or '1. _Italic list_'\n"
-    "- Emojis & Icons: Do NOT use any custom text icons, custom shapes, ASCII symbols, or character-based ornaments (e.g., ▶, ✦, ✔, ➜, ➥, •). Only standard emojis are allowed (e.g., 📱, 💬, ✅, 😊) to make messages engaging, but use them in moderation. Strictly do NOT use text-based icons; only emojis are allowed."
+    "- Emojis & Icons: Do NOT use any text-based icons, custom shapes, ASCII symbols, or character-based ornaments. Also, do NOT use object, symbol, or status emojis (do not use 📱, 💬, ✅, ❌, etc.). Only facial expression emojis (smileys, e.g., 😊, 😀, 😉) or hand gesture emojis (e.g., 👋, 👍, 🙌) are allowed. Use them in moderation."
 )
 
 def get_system_prompt() -> SystemMessage:

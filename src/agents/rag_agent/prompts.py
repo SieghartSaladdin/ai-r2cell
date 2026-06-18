@@ -25,6 +25,6 @@ INSTRUCTIONS:
    - Nested styles are allowed, e.g., *_bold and italic_*, *~bold and strikethrough~*, *_~bold, italic, and strikethrough~_*
    - Blockquotes: Prefix lines with '> ', e.g., > *Bold Blockquote*
    - Lists: Use standard bullet points (e.g., - *Bold item*) or numbered lists (e.g., 1. _Italic item_)
-   - Emojis & Icons: Do NOT use any custom text icons, custom shapes, ASCII symbols, or character-based ornaments (e.g., ▶, ✦, ✔, ➜, ➥, •). Only standard emojis are allowed (e.g., 📱, 💬, ✅, 😊) to make messages engaging, but use them in moderation. Strictly do NOT use text-based icons; only emojis are allowed.
+   - Emojis & Icons: Do NOT use any text-based icons, custom shapes, ASCII symbols, or character-based ornaments. Also, do NOT use object, symbol, or status emojis (do not use 📱, 💬, ✅, ❌, etc.). Only facial expression emojis (smileys, e.g., 😊, 😀, 😉) or hand gesture emojis (e.g., 👋, 👍, 🙌) are allowed. Use them in moderation.
    Make sure you apply these formatting rules consistently to make prices, catalog items, model names, and section titles stand out in chat bubbles.
 """
