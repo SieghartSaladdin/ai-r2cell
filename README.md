@@ -162,10 +162,42 @@ The dashboard gathers live telemetry from the services and updates the UI cards 
 
 ---
 
+## 🌐 Web Admin Dashboard
+
+In addition to the terminal console, a premium **Web Admin Dashboard** is provided to manage the bot's stateful memories, configure RAG files, and monitor conversations.
+
+### 1. Ingested Files (RAG Document Explorer)
+* **PDF Upload & Ingestion**: Drop or select PDF documents (catalogs, specifications, company profiles). The backend automatically splits, embeds, and indexes them into ChromaDB.
+* **Inline PDF Preview Modal**: Preview documents directly within the dashboard. The PDF is fetched, converted to a Base64-encoded string, and served as a local Blob URL, completely evading Internet Download Manager (IDM) interception.
+* **Delete & Re-index**: Delete documents to instantly purge their corresponding vector embeddings from ChromaDB.
+
+### 2. Conversations Manager (Memory Reset Control)
+* **Real-Time Thread Inspection**: Fetches active client JIDs (phone numbers) and turns directly from the SQLite `checkpoints` database.
+* **Chronological Chat Bubbles**: View full dialogue histories in user vs. bot chat bubbles.
+* **AI Session Memory Wiping**: Reset the AI's conversation memory for a single contact or globally. This deletes checkpoint records, letting the chatbot start fresh next time the user messages the WhatsApp gateway.
+
+### 3. Mobile Responsiveness & Aesthetics
+* **Responsive Layout Shifts**: Uses a responsive split layout. On mobile screens (< 768px), large data lists and tables automatically collapse into clean card layouts.
+* **Native-Feeling Mobile Chat**: On mobile viewports, the Conversations panel switches between a list view and a chat logs view (equipped with a header back button) mimicking a native mobile chat application.
+* **Slate/Zinc Minimalist Styling**: Supports a cohesive dark and light theme toggle using Tailwind CSS v4 variant classes and standard zinc palettes (free of high-contrast glow shadows or neon outlines).
+
+---
+
 ## 📁 File Structure
 
 ```plaintext
 ai-r2cell/
+├── admin-dashboard/         # Vue 3 / Vite Web Client
+│   ├── src/
+│   │   ├── components/      # DocumentTable, Navbar, Sidebar, PdfPreviewModal
+│   │   ├── layouts/         # DashboardLayout
+│   │   ├── router/          # Vue Router configuration
+│   │   ├── views/           # DashboardView, KnowledgeBaseView, ConversationsView
+│   │   ├── App.vue          # Root Vue component
+│   │   ├── main.js          # Vite client entrypoint
+│   │   └── style.css        # Tailwind CSS import & theme variants
+│   └── package.json
+│
 ├── logs/                    # Central log directory
 │   ├── fastapi.log          # FastAPI server logs
 │   ├── baileys.log          # Baileys gateway logs
