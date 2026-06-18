@@ -760,8 +760,8 @@ async def chat(request: ChatRequest):
         # 2. Package user message
         input_state = {"messages": [HumanMessage(content=request.message)]}
         
-        # 3. Invoke the compiled graph with persistent thread context
-        response_state = rag_graph.invoke(input_state, config=config)
+        # 3. Invoke the compiled graph asynchronously in a background thread to prevent blocking the event loop
+        response_state = await asyncio.to_thread(rag_graph.invoke, input_state, config=config)
         
         # 4. Extract the last AI response
         last_message = response_state["messages"][-1]
