@@ -1,9 +1,11 @@
 import os
 from langchain_core.tools import tool
+from langchain_core.runnables import RunnableConfig
 from src.core.vectorstore import get_vector_store
+from src.core.event_bus import send_graph_event
 
 @tool
-def query_knowledge_base(query: str) -> str:
+def query_knowledge_base(query: str, config: RunnableConfig = None) -> str:
     """
     Queries the persistent Chroma vector database to search for relevant information
     such as product specifications, features, components, pricing, list tables,
@@ -15,6 +17,9 @@ def query_knowledge_base(query: str) -> str:
     Returns:
         str: A consolidated string of relevant context chunks or a message stating no match was found.
     """
+    thread_id = config.get("configurable", {}).get("thread_id", "unknown") if config else "unknown"
+    send_graph_event("tools", "running", thread_id)
+    
     try:
         # Obtain persistent vector store instance
         store = get_vector_store()
@@ -43,3 +48,5 @@ def query_knowledge_base(query: str) -> str:
         
     except Exception as e:
         return f"Error occurred while searching the knowledge base: {str(e)}"
+    finally:
+        send_graph_event("tools", "completed", thread_id)

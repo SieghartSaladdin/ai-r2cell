@@ -12,25 +12,28 @@ Welcome to the R2CELL Service Gateway and Terminal UI (TUI) Dashboard. This proj
 At the heart of the R2CELL system is a sophisticated, stateful **Retrieval-Augmented Generation (RAG)** conversational AI built on top of **LangChain** and **LangGraph**. The AI acts as a digital customer service and sales agent, designed to represent R2CELL with high professionalism, polite behavior, and 100% factual accuracy.
 
 ### ⛓️ LangGraph Workflow Architecture
-Unlike standard stateless chatbots, the AI engine is built as an orchestration graph using LangGraph. This ensures a clean separation of concerns and robust multi-step reasoning capabilities.
+Unlike standard stateless chatbots, the AI engine is built as an orchestration graph using LangGraph. This ensures a clean separation of concerns and robust multi-step reasoning capabilities through dynamic tool call routing loops.
 
 ```mermaid
 graph TD
-    START -->|User Message| retrieve["Retrieval Node (ChromaDB)"]
-    retrieve -->|Context Injected| call_model["Generation Node (Ollama LLM)"]
-    call_model -->|Factual Response| END
+    START -->|User Message| call_model["Generation Node (Ollama LLM)"]
+    call_model -->|Tools Condition| tools["R2Cell Tool Suite (tools)"]
+    tools -->|Tool Output / Context| call_model
+    call_model -->|Final Response| END
 ```
 
-1. **Retrieval Node (`retrieve`)**:
-   - Extracts the latest user query.
-   - Embeds the query using the `embeddinggemma:latest` model via Ollama.
-   - Performs a similarity search over the persistent **Chroma vector database** to retrieve the most relevant specs, prices, catalog details, or policy terms.
-   - Formats and structures the extracted text chunks as a context block for the next node.
-
-2. **Generation Node (`call_model`)**:
+1. **Generation Node (`call_model`)**:
    - Prepares the conversation history and prepends the official **R2CELL system prompt**.
-   - Dynamically injects the retrieved context block.
    - Invokes the `gemma4:31b-cloud` model via **LangChain Ollama** (`ChatOllama`) with a low temperature configuration (`0.1`) to ensure strict factual adherence and completely prevent hallucinations.
+   - Decides if tools are needed (conditional routing) or produces the final user response.
+
+2. **Agent Tool Suite Node (`tools`)**:
+   - Executes the requested tools dynamically:
+     - `query_knowledge_base`: Queries the Chroma vector database for RAG context.
+     - `query_products`: Queries the SQLite database for phone models, grades, stock, and pricing.
+     - `book_cod_appointment`: Validates inventory, schedules a Cash-on-Delivery meetup, decrements stock, and registers the booking.
+     - `get_bandung_gmaps_location`: Returns R2Cell Bandung office coordinates and Google Maps pin link.
+   - Piles the output context back into the `call_model` node to loop back to the generation node.
 
 3. **Checkpointer Memory Persistence**:
    - Uses `SqliteSaver` checkpointer memory to bind conversations to specific thread IDs (mapped directly to the user's WhatsApp phone identifier or JID).
@@ -44,6 +47,21 @@ graph TD
 * **Chroma Vector Store**: Document embeddings are computed and stored locally in Chroma DB, making the AI's search lightning fast.
 * **On-the-Fly Document Upload**: Through the web dashboard or direct API, administrators can upload official catalogs, price sheets, and company profiles in PDF format.
 * **Auto-Reindexing Pipeline**: When a PDF is uploaded, the system parses the document (`PyPDFLoader`), breaks it into logical chunks (`RecursiveCharacterTextSplitter`), updates embeddings, and re-indexes the Chroma database automatically.
+
+### 🛍️ SQLite Products Inventory Database
+* **Seeded Brands & SKUs**: Seeded with real-world inventory data for major smartphone brands: **Apple** (iPhone 13, 14, 15 series), **Samsung** (Galaxy S22, S23, S24 series, and A-series), **Google** (Pixel 7, 8 series), **Xiaomi** (Xiaomi 14, Redmi series), and **Poco** (F6 Pro).
+* **Cosmetic Grading & Pricing**: Each SKU maps to distinct cosmetic grades: **Like New**, **Grade A**, **Grade B**, and **Grade C+**, with corresponding graded pricing levels.
+* **Stock Levels**: Real-time stock counts initialized to a default seed value of 10 units, allowing realistic sales decrement operations.
+
+### 📦 Cash-on-Delivery (COD) Booking Engine
+* **Automated Scheduling**: Customers can schedule Cash-on-Delivery appointments directly via WhatsApp dialogue.
+* **Inventory & Price Validation**: Before scheduling, the tool dynamically validates stock availability and price for the chosen model, storage, and cosmetic grade combination.
+* **Stock Auto-Decrement**: On successful booking creation, the engine updates the inventory by decrementing the selected item's stock count.
+* **Status Lifecycle**: Booking entries are created as `Pending` and can be transitioned to `Confirmed`, `Completed`, or `Cancelled` by administrators.
+
+### 📍 Bandung Office Location & Pin Integration
+* **Central Hub Location**: Located at **R2Cell Bandung Central Hub** (Jl. Asia Afrika No. 140, Bandung).
+* **Google Maps Pin**: Configured with coordinates `-6.917464, 107.619122` and serves the exact Google Maps link (`https://maps.google.com/?q=-6.917464,107.619122`) to customers requesting meetup locations.
 
 ### 🛡️ Guardrails & Factual Adherence
 * **Anti-Hallucination Prompts**: The generation model is heavily restricted. If a customer asks about a price, specifications, or policies not covered in the retrieved official context, the bot will gracefully decline to speculate, and offer to escalate to human support.
@@ -176,7 +194,19 @@ In addition to the terminal console, a premium **Web Admin Dashboard** is provid
 * **Chronological Chat Bubbles**: View full dialogue histories in user vs. bot chat bubbles.
 * **AI Session Memory Wiping**: Reset the AI's conversation memory for a single contact or globally. This deletes checkpoint records, letting the chatbot start fresh next time the user messages the WhatsApp gateway.
 
-### 3. Mobile Responsiveness & Aesthetics
+### 3. Phone Inventory Panel & Draggable Modal
+* **Stock & SKU Management**: Browse the entire database inventory of phones. Filter by brand, cosmetic grade, or search by model name.
+* **Draggable Modal Form**: Add new devices or edit prices/stock levels using a fully custom draggable modal panel. This modal uses reactive mouse event-listeners, allowing administrators to position it anywhere on their screen without obstructing data views.
+
+### 4. COD Bookings Panel
+* **Appointment Tracking**: View all COD meetups scheduled by the WhatsApp AI. Inspect customer details, selected device models, schedule dates/times, and price details.
+* **Status Transition Control**: Update appointment statuses (Pending, Confirmed, Completed, Cancelled) dynamically from a dropdown selector.
+
+### 5. Interactive Graph Visualizer with Tool Node Details
+* **Flow State Inspection**: Monitors active conversation paths on the compiled LangGraph in real time.
+* **Dynamic Tools List**: The `tools` execution node in the flow diagram lists active agent tools: **Knowledge Base RAG**, **Product Stock Query**, **COD Booking Engine**, and **Bandung Maps Location**.
+
+### 6. Mobile Responsiveness & Aesthetics
 * **Responsive Layout Shifts**: Uses a responsive split layout. On mobile screens (< 768px), large data lists and tables automatically collapse into clean card layouts.
 * **Native-Feeling Mobile Chat**: On mobile viewports, the Conversations panel switches between a list view and a chat logs view (equipped with a header back button) mimicking a native mobile chat application.
 * **Slate/Zinc Minimalist Styling**: Supports a cohesive dark and light theme toggle using Tailwind CSS v4 variant classes and standard zinc palettes (free of high-contrast glow shadows or neon outlines).
@@ -189,10 +219,23 @@ In addition to the terminal console, a premium **Web Admin Dashboard** is provid
 ai-r2cell/
 ├── admin-dashboard/         # Vue 3 / Vite Web Client
 │   ├── src/
-│   │   ├── components/      # DocumentTable, Navbar, Sidebar, PdfPreviewModal
+│   │   ├── components/      
+│   │   │   ├── products/
+│   │   │   │   └── ProductModal.vue # Draggable modal form for products
+│   │   │   ├── DocumentTable.vue
+│   │   │   ├── Navbar.vue
+│   │   │   ├── Sidebar.vue
+│   │   │   └── PdfPreviewModal.vue
 │   │   ├── layouts/         # DashboardLayout
 │   │   ├── router/          # Vue Router configuration
-│   │   ├── views/           # DashboardView, KnowledgeBaseView, ConversationsView
+│   │   ├── views/           
+│   │   │   ├── DashboardView.vue
+│   │   │   ├── KnowledgeBaseView.vue
+│   │   │   ├── ConversationsView.vue
+│   │   │   ├── ProductsView.vue  # Phone Inventory Panel
+│   │   │   ├── BookingsView.vue  # COD Bookings Panel
+│   │   │   ├── GraphView.vue     # Dynamic Graph Visualizer
+│   │   │   └── GatewayView.vue
 │   │   ├── App.vue          # Root Vue component
 │   │   ├── main.js          # Vite client entrypoint
 │   │   └── style.css        # Tailwind CSS import & theme variants
@@ -204,11 +247,30 @@ ai-r2cell/
 │   └── frontend.log         # Web frontend dev logs
 │
 ├── src/
+│   ├── api/
+│   │   ├── bookings.py      # REST endpoints for bookings
+│   │   ├── chat.py          
+│   │   ├── documents.py     
+│   │   ├── gateway.py       
+│   │   ├── graph.py         
+│   │   └── products.py      # REST endpoints for products
+│   │
+│   ├── core/
+│   │   ├── database.py      # SQLite connection & table seeding
+│   │   ├── event_bus.py     
+│   │   ├── gateway_state.py 
+│   │   ├── metrics.py       
+│   │   └── vectorstore.py
+│   │
 │   ├── integrations/
 │   │   └── whatsapp/
 │   │       └── whatsapp.js  # Node.js Baileys connector
 │   │
-│   ├── main.py              # FastAPI server & status routes
+│   ├── tools/
+│   │   ├── booking.py       # LangChain tools for product query, booking & location
+│   │   └── search.py        
+│   │
+│   ├── main.py              # FastAPI server & route registration
 │   │
 │   └── tui/                 # Terminal UI module
 │       ├── app.py           # DashboardApp application driver

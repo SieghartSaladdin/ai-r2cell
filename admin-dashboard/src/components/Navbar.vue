@@ -4,7 +4,7 @@
       <!-- Hamburger Menu Button visible only on mobile -->
       <button 
         @click="$emit('toggle-sidebar')" 
-        class="lg:hidden p-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-550 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 transition-colors shrink-0 cursor-pointer"
+        class="lg:hidden p-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 transition-colors shrink-0 cursor-pointer"
         title="Toggle Menu"
       >
         <Menu class="w-5 h-5" />
@@ -12,7 +12,7 @@
 
       <div class="flex items-center gap-2 bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl w-full transition-all focus-within:border-zinc-400 dark:focus-within:border-zinc-700 focus-within:ring-1 focus-within:ring-zinc-300 dark:focus-within:ring-zinc-800">
         <Search class="w-4 h-4 text-zinc-400 dark:text-zinc-500 shrink-0" />
-        <input type="text" placeholder="Search cell signatures..." class="bg-transparent border-none outline-none text-xs sm:text-sm w-full text-zinc-850 dark:text-zinc-300 placeholder-zinc-400 dark:placeholder-zinc-500" />
+        <input type="text" placeholder="Search cell signatures..." class="bg-transparent border-none outline-none text-xs sm:text-sm w-full text-zinc-800 dark:text-zinc-300 placeholder-zinc-400 dark:placeholder-zinc-500" />
       </div>
     </div>
 

@@ -1,0 +1,5 @@
+[tool.pyrefly]
+python-interpreter-path = "venv/Scripts/python.exe"
+project-includes = ["src", "tui.py"]
+project-excludes = ["**/__pyrefly_virtual__/**", "**/inmemory/**"]
+

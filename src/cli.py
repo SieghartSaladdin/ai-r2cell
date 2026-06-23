@@ -5,11 +5,11 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from langchain_core.messages import HumanMessage
-from src.agents.simple_chatbot import chatbot_graph
+from src.agents.main_agent import main_graph
 
 def run_chat_cli():
     print("==================================================")
-    print("   Modular LangGraph Chatbot (gemma4:31b-cloud)   ")
+    print("   R2CELL RAG Chatbot (gemma4:31b-cloud)          ")
     print("==================================================")
     print("Type 'exit' or 'quit' to end the conversation.\n")
 
@@ -34,7 +34,7 @@ def run_chat_cli():
             
             # We can stream intermediate node transitions or stream final values
             # For simplicity, we can print the updates from nodes as they happen
-            response_state = chatbot_graph.invoke(input_state, config=config)
+            response_state = main_graph.invoke(input_state, config=config)
             
             # The last message in the returned state is the model's response
             last_msg = response_state["messages"][-1]

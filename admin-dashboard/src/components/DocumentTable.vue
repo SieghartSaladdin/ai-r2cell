@@ -12,7 +12,7 @@
           type="text" 
           v-model="searchQuery" 
           placeholder="Search documents..." 
-          class="w-full bg-zinc-50 dark:bg-zinc-950 text-zinc-850 dark:text-zinc-100 pl-4 pr-10 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-800 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-700 transition-colors text-sm"
+          class="w-full bg-zinc-50 dark:bg-zinc-950 text-zinc-800 dark:text-zinc-100 pl-4 pr-10 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-800 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-700 transition-colors text-sm"
         />
         <span class="absolute right-3 top-3 text-zinc-400 dark:text-zinc-500">
           <Search class="w-4 h-4" />
@@ -22,11 +22,11 @@
 
     <!-- Empty State -->
     <div v-if="filteredDocs.length === 0" class="p-20 flex flex-col items-center justify-center text-center">
-      <div class="w-16 h-16 rounded-2xl bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200 dark:border-zinc-700/60 flex items-center justify-center mb-4 text-zinc-400 dark:text-zinc-550">
+      <div class="w-16 h-16 rounded-2xl bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200 dark:border-zinc-700/60 flex items-center justify-center mb-4 text-zinc-400 dark:text-zinc-500">
         <FileText class="w-8 h-8" />
       </div>
       <h4 class="text-lg font-medium text-zinc-800 dark:text-zinc-200 mb-1">No documents found</h4>
-      <p class="text-zinc-500 dark:text-zinc-455 text-sm max-w-sm">
+      <p class="text-zinc-500 dark:text-zinc-400 text-sm max-w-sm">
         {{ searchQuery ? 'Try adjusting your search query.' : 'Upload PDFs to embed training context for your customer service bot.' }}
       </p>
     </div>
@@ -49,7 +49,7 @@
               <td class="p-4 pl-6 font-medium text-zinc-800 dark:text-zinc-200">
                 <div class="flex items-center gap-3">
                   <div class="w-9 h-9 rounded-lg bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700/60 flex items-center justify-center shrink-0">
-                    <FileText class="w-4.5 h-4.5 text-zinc-550 dark:text-zinc-400" />
+                    <FileText class="w-4.5 h-4.5 text-zinc-500 dark:text-zinc-400" />
                   </div>
                   <span class="truncate max-w-[280px] sm:max-w-md" :title="doc.filename">
                     {{ doc.filename }}
@@ -59,7 +59,7 @@
               <td class="p-4 text-sm text-zinc-600 dark:text-zinc-300">
                 {{ formatSize(doc.size) }}
               </td>
-              <td class="p-4 text-sm text-zinc-550 dark:text-zinc-400">
+              <td class="p-4 text-sm text-zinc-500 dark:text-zinc-400">
                 {{ formatDate(doc.modified_at) }}
               </td>
               <td class="p-4 pr-6 text-right">
@@ -95,7 +95,7 @@
         <div v-for="doc in filteredDocs" :key="doc.filename" class="p-5 flex flex-col gap-3 hover:bg-zinc-50/50 dark:hover:bg-zinc-800/10 transition-colors">
           <div class="flex items-start gap-3">
             <div class="w-9 h-9 rounded-lg bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700/60 flex items-center justify-center shrink-0">
-              <FileText class="w-4.5 h-4.5 text-zinc-550 dark:text-zinc-400" />
+              <FileText class="w-4.5 h-4.5 text-zinc-500 dark:text-zinc-400" />
             </div>
             <div class="flex-1 min-w-0">
               <h4 class="text-sm font-semibold text-zinc-800 dark:text-zinc-200 break-all" :title="doc.filename">
@@ -121,7 +121,7 @@
             <button 
               @click="$emit('delete', doc.filename)"
               :disabled="isDeleting === doc.filename"
-              class="flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 hover:bg-red-50 dark:hover:bg-red-950/20 hover:text-red-655 dark:hover:text-red-400 transition-colors cursor-pointer disabled:opacity-40"
+              class="flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 hover:bg-red-50 dark:hover:bg-red-950/20 hover:text-red-600 dark:hover:text-red-400 transition-colors cursor-pointer disabled:opacity-40"
             >
               <Loader2 v-if="isDeleting === doc.filename" class="w-3.5 h-3.5 animate-spin" />
               <Trash2 v-else class="w-3.5 h-3.5" />

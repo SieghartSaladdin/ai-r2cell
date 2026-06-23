@@ -85,8 +85,8 @@ def ingest_all_pdfs() -> None:
 
     # Split documents into chunks
     text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=1000,
-        chunk_overlap=200
+        chunk_size=2000,
+        chunk_overlap=400
     )
     chunks = text_splitter.split_documents(documents)
     print(f"Successfully split into {len(chunks)} text chunks.")
@@ -138,8 +138,8 @@ def ingest_single_pdf(pdf_path: str) -> None:
         return
         
     text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=1000,
-        chunk_overlap=200
+        chunk_size=2000,
+        chunk_overlap=400
     )
     chunks = text_splitter.split_documents(loaded_docs)
     

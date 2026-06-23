@@ -17,34 +17,41 @@
     <nav class="p-6 flex-1 space-y-2 overflow-y-auto">
       <div class="text-xs font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-4 mt-2">Main Menu</div>
       
-      <router-link :to="{ name: 'dashboard' }" @click="$emit('close')" class="flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all" :class="[ $route.name === 'dashboard' ? 'text-zinc-900 dark:text-white bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700/60 shadow-sm' : 'text-zinc-550 dark:text-zinc-400 hover:text-zinc-900 hover:dark:text-zinc-100 hover:bg-zinc-100/50 hover:dark:bg-zinc-800/50' ]">
-        <LayoutDashboard class="w-5 h-5" :class="$route.name === 'dashboard' ? 'text-zinc-900 dark:text-zinc-100' : 'text-zinc-405'" />
+      <router-link :to="{ name: 'dashboard' }" @click="$emit('close')" class="flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all" :class="[ $route.name === 'dashboard' ? 'text-zinc-900 dark:text-white bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700/60 shadow-sm' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 hover:dark:text-zinc-100 hover:bg-zinc-100/50 hover:dark:bg-zinc-800/50' ]">
+        <LayoutDashboard class="w-5 h-5" :class="$route.name === 'dashboard' ? 'text-zinc-900 dark:text-zinc-100' : 'text-zinc-400'" />
         Overview
       </router-link>
 
-      <router-link :to="{ name: 'knowledge' }" @click="$emit('close')" class="flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all" :class="[ $route.name === 'knowledge' ? 'text-zinc-900 dark:text-white bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700/60 shadow-sm' : 'text-zinc-550 dark:text-zinc-400 hover:text-zinc-900 hover:dark:text-zinc-100 hover:bg-zinc-100/50 hover:dark:bg-zinc-800/50' ]">
-        <BookOpen class="w-5 h-5" :class="$route.name === 'knowledge' ? 'text-zinc-900 dark:text-zinc-100' : 'text-zinc-405'" />
+      <router-link :to="{ name: 'knowledge' }" @click="$emit('close')" class="flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all" :class="[ $route.name === 'knowledge' ? 'text-zinc-900 dark:text-white bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700/60 shadow-sm' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 hover:dark:text-zinc-100 hover:bg-zinc-100/50 hover:dark:bg-zinc-800/50' ]">
+        <BookOpen class="w-5 h-5" :class="$route.name === 'knowledge' ? 'text-zinc-900 dark:text-zinc-100' : 'text-zinc-400'" />
         Knowledge Base
       </router-link>
 
-      <router-link :to="{ name: 'conversations' }" @click="$emit('close')" class="flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all" :class="[ $route.name === 'conversations' ? 'text-zinc-900 dark:text-white bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700/60 shadow-sm' : 'text-zinc-550 dark:text-zinc-400 hover:text-zinc-900 hover:dark:text-zinc-100 hover:bg-zinc-100/50 hover:dark:bg-zinc-800/50' ]">
-        <MessageSquare class="w-5 h-5" :class="$route.name === 'conversations' ? 'text-zinc-900 dark:text-zinc-100' : 'text-zinc-405'" />
+      <router-link :to="{ name: 'conversations' }" @click="$emit('close')" class="flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all" :class="[ $route.name === 'conversations' ? 'text-zinc-900 dark:text-white bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700/60 shadow-sm' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 hover:dark:text-zinc-100 hover:bg-zinc-100/50 hover:dark:bg-zinc-800/50' ]">
+        <MessageSquare class="w-5 h-5" :class="$route.name === 'conversations' ? 'text-zinc-900 dark:text-zinc-100' : 'text-zinc-400'" />
         Conversations
       </router-link>
-      <a href="#" class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-zinc-550 dark:text-zinc-400 hover:text-zinc-900 hover:dark:text-zinc-100 hover:bg-zinc-100/50 hover:dark:bg-zinc-800/50 rounded-xl transition-all">
-        <Smartphone class="w-5 h-5" />
+
+      <router-link :to="{ name: 'graph' }" @click="$emit('close')" class="flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all" :class="[ $route.name === 'graph' ? 'text-zinc-900 dark:text-white bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700/60 shadow-sm' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 hover:dark:text-zinc-100 hover:bg-zinc-100/50 hover:dark:bg-zinc-800/50' ]">
+        <GitBranch class="w-5 h-5" :class="$route.name === 'graph' ? 'text-zinc-900 dark:text-zinc-100' : 'text-zinc-400'" />
+        Graph Architecture
+      </router-link>
+      <router-link :to="{ name: 'gateway' }" @click="$emit('close')" class="flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all" :class="[ $route.name === 'gateway' ? 'text-zinc-900 dark:text-white bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700/60 shadow-sm' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 hover:dark:text-zinc-100 hover:bg-zinc-100/50 hover:dark:bg-zinc-800/50' ]">
+        <Smartphone class="w-5 h-5" :class="$route.name === 'gateway' ? 'text-zinc-900 dark:text-zinc-100' : 'text-zinc-400'" />
         WhatsApp Gateway
-      </a>
+      </router-link>
       
-      <div class="text-xs font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-4 mt-8">System</div>
-      <a href="#" class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-zinc-550 dark:text-zinc-400 hover:text-zinc-900 hover:dark:text-zinc-100 hover:bg-zinc-100/50 hover:dark:bg-zinc-800/50 rounded-xl transition-all">
-        <Server class="w-5 h-5" />
-        Service Logs
-      </a>
-      <a href="#" class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-zinc-550 dark:text-zinc-400 hover:text-zinc-900 hover:dark:text-zinc-100 hover:bg-zinc-100/50 hover:dark:bg-zinc-800/50 rounded-xl transition-all">
-        <Settings class="w-5 h-5" />
-        Settings
-      </a>
+      <div class="text-xs font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-4 mt-6">COD Inventory & Bookings</div>
+
+      <router-link :to="{ name: 'products' }" @click="$emit('close')" class="flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all" :class="[ $route.name === 'products' ? 'text-zinc-900 dark:text-white bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700/60 shadow-sm' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 hover:dark:text-zinc-100 hover:bg-zinc-100/50 hover:dark:bg-zinc-800/50' ]">
+        <Package class="w-5 h-5" :class="$route.name === 'products' ? 'text-zinc-900 dark:text-zinc-100' : 'text-zinc-400'" />
+        Phone Inventory
+      </router-link>
+
+      <router-link :to="{ name: 'bookings' }" @click="$emit('close')" class="flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all" :class="[ $route.name === 'bookings' ? 'text-zinc-900 dark:text-white bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700/60 shadow-sm' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 hover:dark:text-zinc-100 hover:bg-zinc-100/50 hover:dark:bg-zinc-800/50' ]">
+        <Calendar class="w-5 h-5" :class="$route.name === 'bookings' ? 'text-zinc-900 dark:text-zinc-100' : 'text-zinc-400'" />
+        COD Bookings
+      </router-link>
     </nav>
 
     <div class="p-6 border-t border-zinc-200 dark:border-zinc-800">
@@ -69,7 +76,10 @@ import {
   Smartphone, 
   Settings, 
   Server,
-  X
+  GitBranch,
+  X,
+  Package,
+  Calendar
 } from 'lucide-vue-next'
 
 defineProps({

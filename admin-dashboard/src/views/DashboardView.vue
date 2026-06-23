@@ -45,7 +45,7 @@
         <div class="flex items-end gap-3">
           <p class="text-4xl font-bold text-zinc-900 dark:text-zinc-100">{{ statusData?.baileys?.message_count || 0 }}</p>
         </div>
-        <p class="text-xs text-zinc-450 dark:text-zinc-500 mt-2">Powered by Ollama</p>
+        <p class="text-xs text-zinc-400 dark:text-zinc-500 mt-2">Powered by Ollama</p>
       </div>
 
       <!-- Stat Card 3: RAG Documents -->
@@ -61,9 +61,9 @@
         </div>
         <div class="flex items-end gap-3">
           <p class="text-4xl font-bold text-zinc-900 dark:text-zinc-100">34</p>
-          <span class="text-sm text-zinc-450 dark:text-zinc-500 mb-1">Docs</span>
+          <span class="text-sm text-zinc-400 dark:text-zinc-500 mb-1">Docs</span>
         </div>
-        <p class="text-xs text-zinc-450 dark:text-zinc-500 mt-2">ChromaDB Synced</p>
+        <p class="text-xs text-zinc-400 dark:text-zinc-500 mt-2">ChromaDB Synced</p>
       </div>
 
       <!-- Stat Card 4: FastAPI Status -->
@@ -80,7 +80,7 @@
         <div class="flex items-end gap-3">
           <p class="text-4xl font-bold text-zinc-900 dark:text-zinc-100">{{ statusData?.fastapi?.request_count || 0 }}</p>
         </div>
-        <p class="text-xs text-zinc-450 dark:text-zinc-500 mt-2">Last req: {{ statusData?.fastapi?.last_request || 'never' }}</p>
+        <p class="text-xs text-zinc-400 dark:text-zinc-500 mt-2">Last req: {{ statusData?.fastapi?.last_request || 'never' }}</p>
       </div>
     </div>
 
@@ -92,13 +92,13 @@
         <div class="p-6 border-b border-zinc-200 dark:border-zinc-800 flex justify-between items-center gap-4">
           <div>
             <h3 class="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Active Conversations</h3>
-            <p class="text-xs text-zinc-555 dark:text-zinc-400 mt-0.5">Real-time memory states extracted from LangGraph SQLite checkpointer.</p>
+            <p class="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">Real-time memory states extracted from LangGraph SQLite checkpointer.</p>
           </div>
           <button 
             v-if="chatThreads.length > 0"
             @click="resetAllMemories" 
             :disabled="isResettingAll"
-            class="text-xs font-semibold px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 hover:bg-red-50 dark:hover:bg-red-950/20 text-zinc-600 dark:text-zinc-400 hover:text-red-655 dark:hover:text-red-400 cursor-pointer transition-all flex items-center gap-1.5 disabled:opacity-40"
+            class="text-xs font-semibold px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 hover:bg-red-50 dark:hover:bg-red-950/20 text-zinc-600 dark:text-zinc-400 hover:text-red-600 dark:hover:text-red-400 cursor-pointer transition-all flex items-center gap-1.5 disabled:opacity-40"
           >
             <Loader2 v-if="isResettingAll" class="w-3.5 h-3.5 animate-spin" />
             <Trash2 v-else class="w-3.5 h-3.5" />
@@ -108,11 +108,11 @@
 
         <!-- Empty State -->
         <div v-if="chatThreads.length === 0" class="p-20 flex flex-col items-center justify-center text-center flex-grow">
-          <div class="w-16 h-16 rounded-2xl bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200 dark:border-zinc-700/60 flex items-center justify-center mb-4 text-zinc-400 dark:text-zinc-550">
+          <div class="w-16 h-16 rounded-2xl bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200 dark:border-zinc-700/60 flex items-center justify-center mb-4 text-zinc-400 dark:text-zinc-500">
             <MessageCircle class="w-8 h-8" />
           </div>
           <h4 class="text-lg font-medium text-zinc-800 dark:text-zinc-200 mb-1">No active chats</h4>
-          <p class="text-zinc-500 dark:text-zinc-450 text-sm max-w-sm">
+          <p class="text-zinc-500 dark:text-zinc-400 text-sm max-w-sm">
             When customers message your WhatsApp bot, their chat history and memory states will appear here.
           </p>
         </div>
@@ -131,15 +131,15 @@
               </thead>
               <tbody class="text-sm divide-y divide-zinc-200 dark:divide-zinc-800">
                 <tr v-for="thread in chatThreads" :key="thread.thread_id" class="hover:bg-zinc-50 dark:hover:bg-zinc-800/10 transition-colors">
-                  <td class="px-6 py-4 pl-6 font-mono text-zinc-800 dark:text-zinc-250 font-medium">
+                  <td class="px-6 py-4 pl-6 font-mono text-zinc-800 dark:text-zinc-200 font-medium">
                     {{ thread.thread_id.split('@')[0] }}
                   </td>
-                  <td class="px-6 py-4 text-zinc-600 dark:text-zinc-350">
+                  <td class="px-6 py-4 text-zinc-600 dark:text-zinc-300">
                     {{ thread.message_count }}
                   </td>
                   <td class="px-6 py-4 max-w-xs lg:max-w-md">
                     <div class="flex items-center gap-1.5 text-zinc-500 dark:text-zinc-400">
-                      <span class="text-2xs px-1.5 py-0.5 rounded-md bg-zinc-105 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 font-semibold shrink-0 border border-zinc-200 dark:border-zinc-700/60">
+                      <span class="text-2xs px-1.5 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 font-semibold shrink-0 border border-zinc-200 dark:border-zinc-700/60">
                         {{ thread.last_message_sender }}
                       </span>
                       <span class="truncate text-sm text-zinc-700 dark:text-zinc-300" :title="thread.last_message">
@@ -167,10 +167,10 @@
           <div class="md:hidden divide-y divide-zinc-200 dark:divide-zinc-800">
             <div v-for="thread in chatThreads" :key="thread.thread_id" class="p-5 flex flex-col gap-3 hover:bg-zinc-50/50 dark:hover:bg-zinc-800/10 transition-colors">
               <div class="flex items-center justify-between">
-                <span class="font-mono text-sm font-semibold text-zinc-800 dark:text-zinc-250">
+                <span class="font-mono text-sm font-semibold text-zinc-800 dark:text-zinc-200">
                   {{ thread.thread_id.split('@')[0] }}
                 </span>
-                <span class="text-xs text-zinc-500 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-850 px-2 py-0.5 rounded-full border border-zinc-200 dark:border-zinc-750">
+                <span class="text-xs text-zinc-500 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded-full border border-zinc-200 dark:border-zinc-700">
                   {{ thread.message_count }} turns
                 </span>
               </div>
@@ -186,7 +186,7 @@
                 <button 
                   @click="resetThreadMemory(thread.thread_id)"
                   :disabled="isResettingThread === thread.thread_id"
-                  class="flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 hover:bg-red-50 dark:hover:bg-red-950/20 hover:text-red-655 dark:hover:text-red-400 transition-all cursor-pointer disabled:opacity-40"
+                  class="flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 hover:bg-red-50 dark:hover:bg-red-950/20 hover:text-red-600 dark:hover:text-red-400 transition-all cursor-pointer disabled:opacity-40"
                 >
                   <Loader2 v-if="isResettingThread === thread.thread_id" class="w-3.5 h-3.5 animate-spin" />
                   <Trash2 v-else class="w-3.5 h-3.5" />

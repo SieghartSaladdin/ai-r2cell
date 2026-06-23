@@ -56,11 +56,11 @@
               <h4 class="text-sm font-bold text-zinc-800 dark:text-zinc-200 truncate">
                 {{ thread.thread_id.split('@')[0] }}
               </h4>
-              <span class="text-3xs text-zinc-450 dark:text-zinc-500 bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded border border-zinc-200 dark:border-zinc-750 font-semibold">
+              <span class="text-3xs text-zinc-400 dark:text-zinc-500 bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded border border-zinc-200 dark:border-zinc-700 font-semibold">
                 {{ thread.message_count }} turns
               </span>
             </div>
-            <p class="text-xs text-zinc-550 dark:text-zinc-400 truncate" :title="thread.last_message">
+            <p class="text-xs text-zinc-500 dark:text-zinc-400 truncate" :title="thread.last_message">
               {{ thread.last_message || 'Empty thread' }}
             </p>
           </div>
@@ -79,7 +79,7 @@
           <!-- Back button on mobile viewports -->
           <button 
             @click="isMobileChatActive = false"
-            class="md:hidden p-2 -ml-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-550 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 cursor-pointer shrink-0 transition-colors"
+            class="md:hidden p-2 -ml-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 cursor-pointer shrink-0 transition-colors"
           >
             <ChevronLeft class="w-5 h-5" />
           </button>
@@ -95,7 +95,7 @@
         <button 
           @click="resetMemory"
           :disabled="isResetting"
-          class="text-xs font-semibold px-3.5 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:bg-red-50 dark:hover:bg-red-950/20 text-zinc-605 dark:text-zinc-400 hover:text-red-655 dark:hover:text-red-400 cursor-pointer transition-all flex items-center gap-1.5 disabled:opacity-40"
+          class="text-xs font-semibold px-3.5 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:bg-red-50 dark:hover:bg-red-950/20 text-zinc-600 dark:text-zinc-400 hover:text-red-600 dark:hover:text-red-400 cursor-pointer transition-all flex items-center gap-1.5 disabled:opacity-40"
         >
           <Loader2 v-if="isResetting" class="w-3.5 h-3.5 animate-spin" />
           <Trash2 v-else class="w-3.5 h-3.5" />
@@ -106,7 +106,7 @@
       <!-- Chat Empty State -->
       <div v-if="!activeThread" class="flex-1 flex flex-col items-center justify-center text-center p-8 bg-zinc-50 dark:bg-zinc-950">
         <div class="w-20 h-20 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 flex items-center justify-center shadow-xs text-zinc-400 mb-4 animate-bounce duration-1000">
-          <MessageSquare class="w-10 h-10 text-zinc-350 dark:text-zinc-650" />
+          <MessageSquare class="w-10 h-10 text-zinc-300 dark:text-zinc-650" />
         </div>
         <h3 class="text-lg font-bold text-zinc-800 dark:text-zinc-200 mb-1">Select a Conversation</h3>
         <p class="text-sm text-zinc-500 max-w-sm">

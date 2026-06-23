@@ -60,7 +60,7 @@
         <div class="flex items-end gap-2">
           <p class="text-3xl font-bold text-zinc-800 dark:text-zinc-100">ChromaDB</p>
         </div>
-        <p class="text-xs text-zinc-500 dark:text-zinc-450 mt-3 flex items-center gap-1.5">
+        <p class="text-xs text-zinc-500 dark:text-zinc-400 mt-3 flex items-center gap-1.5">
           <span class="w-1.5 h-1.5 rounded-full bg-zinc-400 animate-pulse"></span>
           Ready & Connected
         </p>
@@ -104,9 +104,9 @@
       class="fixed inset-0 bg-black/40 dark:bg-black/60 backdrop-blur-sm z-50 flex flex-col items-center justify-center gap-4"
     >
       <div class="bg-white dark:bg-zinc-900 p-8 rounded-2xl border border-zinc-200 dark:border-zinc-800 flex flex-col items-center max-w-sm text-center shadow-lg transition-all mx-4">
-        <Loader2 class="w-12 h-12 text-zinc-500 dark:text-zinc-450 animate-spin mb-4" />
+        <Loader2 class="w-12 h-12 text-zinc-500 dark:text-zinc-400 animate-spin mb-4" />
         <h3 class="text-lg font-semibold text-zinc-900 dark:text-zinc-150 mb-2">Ingesting Document</h3>
-        <p class="text-sm text-zinc-500 dark:text-zinc-450">
+        <p class="text-sm text-zinc-500 dark:text-zinc-400">
           We are analyzing, splitting, and uploading your PDF to ChromaDB vector store...
         </p>
       </div>
