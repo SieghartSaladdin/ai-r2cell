@@ -10,7 +10,7 @@ from src.tools.booking import query_products, book_cod_appointment, get_bandung_
 def call_model(state: MainState, config: RunnableConfig = None) -> dict:
     """
     Generation Node (LLM Call).
-    Prepend system prompt and calls the Ollama model with bound RAG and booking tools.
+    Prepend system prompt and calls the LLM with bound RAG and booking tools.
     The model dynamically decides which tools to invoke.
     """
     thread_id = config.get("configurable", {}).get("thread_id", "unknown") if config else "unknown"

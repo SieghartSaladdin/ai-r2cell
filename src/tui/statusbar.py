@@ -31,7 +31,7 @@ def _dot(status: str) -> tuple[str, str]:
 SERVICE_URLS = {
     "FastAPI": "http://localhost:8000",
     "Baileys": "http://localhost:8000/qr",
-    "Frontend": "http://localhost:5173",
+    "Frontend": "http://localhost:5180",
 }
 
 

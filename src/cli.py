@@ -9,7 +9,7 @@ from src.agents.main_agent import main_graph
 
 def run_chat_cli():
     print("==================================================")
-    print("   R2CELL RAG Chatbot (gemma4:31b-cloud)          ")
+    print("   R2CELL RAG Chatbot (COMBO_GEMINI)")
     print("==================================================")
     print("Type 'exit' or 'quit' to end the conversation.\n")
 

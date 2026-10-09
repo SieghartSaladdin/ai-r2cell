@@ -4,12 +4,21 @@ from langchain_core.runnables import RunnableConfig
 from src.core.vectorstore import get_vector_store
 from src.core.event_bus import send_graph_event
 
+# Chunks scoring below this cosine relevance (1 - distance) are dropped instead of being passed to
+# the LLM. This is only a noise floor, not an off-topic gate: with this tiny corpus the right
+# answer can score as low as 0.43 (the warranty chunk for short questions) while unrelated
+# questions reach 0.53, so any stricter value drops real answers. SEARCH_K covers the whole index
+# (7 chunks today). Re-measure both after the corpus grows or the embedding model changes.
+MIN_RELEVANCE = float(os.getenv("RAG_MIN_RELEVANCE", "0.40"))
+SEARCH_K = 8
+
 @tool
 def query_knowledge_base(query: str, config: RunnableConfig = None) -> str:
     """
-    Queries the persistent Chroma vector database to search for relevant information
-    such as product specifications, features, components, pricing, list tables,
-    and business policies. Consolidates the top matching document chunks.
+    Queries the persistent Chroma vector database for company knowledge documents:
+    the phone grading guide (Like New, Grade A/B/C+/C criteria), warranty, ordering and
+    wholesale information, and other business policies. Consolidates the top matching chunks.
+    Do NOT use this for prices or stock levels: use `query_products` for those.
     
     Args:
         query (str): The search query to locate relevant context.
@@ -24,8 +33,9 @@ def query_knowledge_base(query: str, config: RunnableConfig = None) -> str:
         # Obtain persistent vector store instance
         store = get_vector_store()
         
-        # Perform similarity search with k=5 to retrieve sufficient context
-        results = store.similarity_search(query, k=5)
+        # Retrieve the top matches with their cosine relevance scores, then drop weak matches
+        scored = store.similarity_search_with_relevance_scores(query, k=SEARCH_K)
+        results = [doc for doc, score in scored if score >= MIN_RELEVANCE]
         
         if not results:
             return "No relevant information found in the knowledge base."

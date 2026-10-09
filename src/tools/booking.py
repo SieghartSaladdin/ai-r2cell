@@ -93,56 +93,74 @@ def book_cod_appointment(
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # Look for matching product
-        # Make search flexible using LIKE for model to support partial name match
-        cursor.execute(
-            "SELECT id, price, stock, brand, model, storage, grade FROM products WHERE model LIKE ? AND storage = ? AND grade = ?",
-            (f"%{model}%", storage, grade)
+        # Storage and grade are matched exactly (ignoring case and spaces, so "256GB" == "256 GB").
+        base_sql = (
+            "SELECT id, price, stock, brand, model, storage, grade FROM products "
+            "WHERE REPLACE(storage, ' ', '') = REPLACE(?, ' ', '') COLLATE NOCASE "
+            "AND grade = ? COLLATE NOCASE "
         )
-        product = cursor.fetchone()
-        
-        if not product:
-            # Let's try exact match without LIKE just in case
-            cursor.execute(
-                "SELECT id, price, stock, brand, model, storage, grade FROM products WHERE model = ? AND storage = ? AND grade = ?",
-                (model, storage, grade)
-            )
-            product = cursor.fetchone()
-            
-        if not product:
+
+        # 1. Exact model match first ("iPhone 15" must never resolve to "iPhone 15 Pro Max").
+        cursor.execute(
+            base_sql + "AND (model = ? COLLATE NOCASE OR brand || ' ' || model = ? COLLATE NOCASE)",
+            (storage, grade, model.strip(), model.strip())
+        )
+        matches = cursor.fetchall()
+
+        # 2. Fall back to partial match, but only accept it when it is unambiguous.
+        if not matches:
+            cursor.execute(base_sql + "AND model LIKE ?", (storage, grade, f"%{model.strip()}%"))
+            matches = cursor.fetchall()
+            candidates = sorted({row["model"] for row in matches})
+            if len(candidates) > 1:
+                conn.close()
+                return (
+                    f"Error: Model '{model}' is ambiguous for {storage} ({grade}). "
+                    f"Matching models: {', '.join(candidates)}. "
+                    f"Ask the customer which exact model they want, then retry."
+                )
+
+        if not matches:
             conn.close()
             return f"Error: No product found matching Model: '{model}', Storage: '{storage}', Grade: '{grade}' in our database. Please double-check availability using query_products first."
-            
-        product_dict = dict(product)
+
+        product_dict = dict(matches[0])
         product_id = product_dict["id"]
         price = product_dict["price"]
         stock = product_dict["stock"]
         full_model_name = product_dict["model"]
-        
+        storage = product_dict["storage"]
+        grade = product_dict["grade"]
+
         if stock <= 0:
             conn.close()
             return f"Error: '{full_model_name} {storage} ({grade})' is currently out of stock."
-            
+
         # Create booking description
         model_storage_grade = f"{full_model_name} {storage} ({grade})"
         location = "R2Cell Bandung Central Hub (Jl. Asia Afrika No. 140, Bandung)"
         status = "Pending"
         
+        # Decrement stock first, atomically, so concurrent bookings can't oversell the last unit
+        cursor.execute("UPDATE products SET stock = stock - 1 WHERE id = ? AND stock > 0", (product_id,))
+        if cursor.rowcount == 0:
+            conn.rollback()
+            conn.close()
+            return f"Error: '{model_storage_grade}' is currently out of stock."
+
         # Insert booking record
         cursor.execute("""
             INSERT INTO bookings (customer_name, customer_phone, model_storage_grade, price, appointment_date, appointment_time, location, status)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """, (customer_name, customer_phone, model_storage_grade, price, date, time, location, status))
-        
-        # Decrement stock by 1
-        cursor.execute("UPDATE products SET stock = stock - 1 WHERE id = ?", (product_id,))
-        
+        booking_id = cursor.lastrowid
+
         conn.commit()
         conn.close()
-        
+
         return (
             f"Success! Booking created successfully.\n"
-            f"- *Booking ID*: [auto-assigned]\n"
+            f"- *Booking ID*: {booking_id}\n"
             f"- *Customer Name*: {customer_name}\n"
             f"- *Customer Phone*: {customer_phone}\n"
             f"- *Device*: {model_storage_grade}\n"

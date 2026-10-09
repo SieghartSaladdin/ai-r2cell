@@ -2,6 +2,7 @@ import sys
 import os
 import time
 import logging
+import threading
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
@@ -15,6 +16,7 @@ from src.api.documents import router as doc_router
 from src.api.gateway import router as gateway_router
 from src.api.graph import router as graph_router
 from src.core.database import init_db
+from src.core.llm import warmup_llm
 from src.api.products import router as products_router
 from src.api.bookings import router as bookings_router
 
@@ -85,9 +87,15 @@ app.include_router(products_router)
 app.include_router(bookings_router)
 
 
+@app.on_event("startup")
+def warm_up_router():
+    # Background thread: server startup must not wait on the router.
+    threading.Thread(target=warmup_llm, daemon=True).start()
+
+
 @app.get("/")
 def read_root():
-    return {"status": "online", "model": "gemma4:31b-cloud", "engine": "LangGraph"}
+    return {"status": "online", "model": os.getenv("LLM_MODEL", "COMBO_GEMINI"), "engine": "LangGraph"}
 
 
 if __name__ == "__main__":

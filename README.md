@@ -1,281 +1,99 @@
-# R2CELL Service Gateway & TUI Dashboard
+# R2CELL – WhatsApp AI Customer Service
 
-Welcome to the R2CELL Service Gateway and Terminal UI (TUI) Dashboard. This project provides a unified console control center to run, monitor, and manage the three core services that power the WhatsApp AI bot system:
-1. **FastAPI Backend** (Python uvicorn API & metrics router)
-2. **WhatsApp Gateway** (Node.js/Baileys API connector)
-3. **Web Dashboard** (Vue 3/Vite frontend client)
+A WhatsApp chatbot for R2Cell, a pre-owned phone store in Bandung. It answers grading and warranty questions with RAG over PDF documents, checks stock and prices in SQLite, books Cash-on-Delivery meetups, and shares the store location. Everything is monitored from a web admin dashboard and a terminal UI.
 
----
+Stack: Python 3.10+, FastAPI, LangGraph/LangChain, ChromaDB, SQLite, Node.js + Baileys, Vue 3 + Vite + Tailwind v4. The chat LLM and the embedding model are both served by **9router**, an OpenAI-compatible API.
 
-## 🤖 The R2CELL AI Engine (LangChain & LangGraph)
-
-At the heart of the R2CELL system is a sophisticated, stateful **Retrieval-Augmented Generation (RAG)** conversational AI built on top of **LangChain** and **LangGraph**. The AI acts as a digital customer service and sales agent, designed to represent R2CELL with high professionalism, polite behavior, and 100% factual accuracy.
-
-### ⛓️ LangGraph Workflow Architecture
-Unlike standard stateless chatbots, the AI engine is built as an orchestration graph using LangGraph. This ensures a clean separation of concerns and robust multi-step reasoning capabilities through dynamic tool call routing loops.
+## Architecture
 
 ```mermaid
-graph TD
-    START -->|User Message| call_model["Generation Node (Ollama LLM)"]
-    call_model -->|Tools Condition| tools["R2Cell Tool Suite (tools)"]
-    tools -->|Tool Output / Context| call_model
-    call_model -->|Final Response| END
+graph LR
+    User[WhatsApp User] <--> WA[WhatsApp Gateway<br/>Node.js/Baileys]
+    WA <--> API[FastAPI :8000]
+    Dash[Admin Dashboard<br/>Vue :5180] <--> API
+    API <--> Graph[LangGraph Agent]
+    Graph <--> LLM[9router<br/>COMBO_GEMINI]
+    Graph <--> SQLite[(SQLite<br/>products, bookings, checkpoints)]
+    Graph <--> Chroma[(ChromaDB)]
+    Chroma <--> Emb[9router<br/>gemini-embedding-2-preview]
 ```
 
-1. **Generation Node (`call_model`)**:
-   - Prepares the conversation history and prepends the official **R2CELL system prompt**.
-   - Invokes the `gemma4:31b-cloud` model via **LangChain Ollama** (`ChatOllama`) with a low temperature configuration (`0.1`) to ensure strict factual adherence and completely prevent hallucinations.
-   - Decides if tools are needed (conditional routing) or produces the final user response.
+The agent (`src/agents/main_agent/`) is a `call_model` ↔ `tools` loop:
 
-2. **Agent Tool Suite Node (`tools`)**:
-   - Executes the requested tools dynamically:
-     - `query_knowledge_base`: Queries the Chroma vector database for RAG context.
-     - `query_products`: Queries the SQLite database for phone models, grades, stock, and pricing.
-     - `book_cod_appointment`: Validates inventory, schedules a Cash-on-Delivery meetup, decrements stock, and registers the booking.
-     - `get_bandung_gmaps_location`: Returns R2Cell Bandung office coordinates and Google Maps pin link.
-   - Piles the output context back into the `call_model` node to loop back to the generation node.
+- `call_model` calls the LLM through `ChatOpenAI` (`src/core/llm.py`) at temperature 0.1. FastAPI sends one warm-up request in the background on startup.
+- Tools (`src/tools/`): `query_knowledge_base` (RAG, cosine, k=8, drops chunks below `RAG_MIN_RELEVANCE`), `query_products` (stock and prices from SQLite), `book_cod_appointment`, `get_bandung_gmaps_location`.
+- Conversation memory is stored per WhatsApp contact with `SqliteSaver` (`checkpoints.db`).
 
-3. **Checkpointer Memory Persistence**:
-   - Uses `SqliteSaver` checkpointer memory to bind conversations to specific thread IDs (mapped directly to the user's WhatsApp phone identifier or JID).
-   - This provides persistent conversation sessions so the agent remembers previous customer interactions across restarts.
+## Setup
 
----
-
-## ✨ Core AI & System Features
-
-### 📖 Dynamic Document Ingestion (RAG)
-* **Chroma Vector Store**: Document embeddings are computed and stored locally in Chroma DB, making the AI's search lightning fast.
-* **On-the-Fly Document Upload**: Through the web dashboard or direct API, administrators can upload official catalogs, price sheets, and company profiles in PDF format.
-* **Auto-Reindexing Pipeline**: When a PDF is uploaded, the system parses the document (`PyPDFLoader`), breaks it into logical chunks (`RecursiveCharacterTextSplitter`), updates embeddings, and re-indexes the Chroma database automatically.
-
-### 🛍️ SQLite Products Inventory Database
-* **Seeded Brands & SKUs**: Seeded with real-world inventory data for major smartphone brands: **Apple** (iPhone 13, 14, 15 series), **Samsung** (Galaxy S22, S23, S24 series, and A-series), **Google** (Pixel 7, 8 series), **Xiaomi** (Xiaomi 14, Redmi series), and **Poco** (F6 Pro).
-* **Cosmetic Grading & Pricing**: Each SKU maps to distinct cosmetic grades: **Like New**, **Grade A**, **Grade B**, and **Grade C+**, with corresponding graded pricing levels.
-* **Stock Levels**: Real-time stock counts initialized to a default seed value of 10 units, allowing realistic sales decrement operations.
-
-### 📦 Cash-on-Delivery (COD) Booking Engine
-* **Automated Scheduling**: Customers can schedule Cash-on-Delivery appointments directly via WhatsApp dialogue.
-* **Inventory & Price Validation**: Before scheduling, the tool dynamically validates stock availability and price for the chosen model, storage, and cosmetic grade combination.
-* **Stock Auto-Decrement**: On successful booking creation, the engine updates the inventory by decrementing the selected item's stock count.
-* **Status Lifecycle**: Booking entries are created as `Pending` and can be transitioned to `Confirmed`, `Completed`, or `Cancelled` by administrators.
-
-### 📍 Bandung Office Location & Pin Integration
-* **Central Hub Location**: Located at **R2Cell Bandung Central Hub** (Jl. Asia Afrika No. 140, Bandung).
-* **Google Maps Pin**: Configured with coordinates `-6.917464, 107.619122` and serves the exact Google Maps link (`https://maps.google.com/?q=-6.917464,107.619122`) to customers requesting meetup locations.
-
-### 🛡️ Guardrails & Factual Adherence
-* **Anti-Hallucination Prompts**: The generation model is heavily restricted. If a customer asks about a price, specifications, or policies not covered in the retrieved official context, the bot will gracefully decline to speculate, and offer to escalate to human support.
-* **Polite, Sales-Centric Persona**: Programmed to maintain a helpful, warm tone focused on certified pre-owned smartphones (such as iPhones), mobile accessories, and wholesale/retail distribution.
-
-### 💬 Human-like Conversational Pacing on WhatsApp
-* **Message Bubble Splitting**: Rather than dumping long blocks of text on customers, the WhatsApp gateway dynamically splits the AI's response by paragraphs into multiple sequential chat bubbles.
-* **Typing Indicator Simulation**: Sends a `composing` (typing...) presence update to the sender.
-* **Dynamic Pacing Delays**: Calculates realistic typing durations proportional to the length of each bubble (e.g. 20ms per character, clamped between 1s and 3.5s) and adds natural pauses between messages to mimic a live customer service agent.
-
----
-
-## 📸 Dashboard Preview
-
-The TUI features a modern, clean dark-mode interface styled with high-contrast pastel colors (blue, green, orange, red) to provide glanceable feedback:
-
-* **Left Panel:** Service health cards with reactive status dots, metrics indicators, action toggles, and shortcut links.
-* **Right Panel:** Tabbed logging pane displaying real-time tail logs for the API, WhatsApp, and Web services.
-* **Popup Overlays:** Includes a reactive WhatsApp scan modal (with timer and instructions), action confirmations, and a help window.
-
----
-
-## 🚀 Getting Started
-
-### Prerequisites
-* **Python 3.10+** (with virtual environment)
-* **Node.js 18+** (and npm)
-* **WhatsApp** on a mobile device
-
-### Installation
-1. Clone the repository and navigate to the project directory:
-   ```bash
-   cd ai-r2cell
+1. Create `.env` in the project root (never commit it):
+   ```ini
+   LLM_PROVIDER=9router
+   LLM_API_BASE_URL=https://ai.qifor.my.id/v1
+   LLM_API_KEY=your-9router-api-key
+   LLM_MODEL=COMBO_GEMINI
+   EMBEDDING_MODEL=gemini/gemini-embedding-2-preview
+   # optional: RAG_CHUNK_SIZE=1200, RAG_CHUNK_OVERLAP=200, RAG_MIN_RELEVANCE=0.40
    ```
-2. Set up the Python virtual environment and install dependencies:
+2. Install Python dependencies:
    ```bash
    python -m venv venv
-   # On Windows:
    .\venv\Scripts\Activate.ps1
-   # On Unix:
-   source venv/bin/activate
-
    pip install -r requirements.txt
    ```
-3. Install Node.js dependencies for the WhatsApp Gateway:
+3. Install Node dependencies:
    ```bash
-   npm install
+   cd src/integrations/whatsapp && npm install && cd ../../..
+   cd admin-dashboard && npm install && cd ..
    ```
-4. Install Node.js dependencies for the Web Dashboard:
+4. Ingest the PDFs in `src/data/` into ChromaDB:
    ```bash
-   cd admin-dashboard
-   npm install
-   cd ..
+   python -c "from src.core.vectorstore import ingest_all_pdfs; ingest_all_pdfs()"
    ```
+   Pages are cleaned first (browser print footers and price-table rows are dropped, since prices live in SQLite), split into 1200-character chunks, and embedded through 9router. **Re-run this whenever `EMBEDDING_MODEL` changes.**
 
-### Running the Dashboard
-Launch the unified dashboard directly from your terminal:
+## Running
+
 ```bash
 python tui.py
 ```
-This automatically boots all three services in isolated background processes and starts streaming their logs.
 
----
+The TUI starts all three services and shows their status and logs. To run them separately: `npm run start:backend`, `npm run start:wa`, `npm run start:frontend`. The backend listens on `http://localhost:8000` and the dashboard on `http://localhost:5180`.
 
-## 🛠 Keyboard Shortcuts
+TUI keys: `q` quit, `r` restart services, `1`/`2`/`3` switch log tab, `c` clear log, `?` help.
 
-Press these keys at any time while the TUI is focused to navigate and trigger actions:
+RAG evaluation (Ragas, using `src/evaluation/questions.json` and the 9router settings from `.env`):
 
-| Key | Action | Description |
-|:---:|:---|:---|
-| `q` | **Quit** | Terminate the TUI and kill all active child/spawned services gracefully. |
-| `r` | **Restart Services** | Hard stop and restart all three gateway services. |
-| `1` | **FastAPI Logs** | Switch the active log pane view to the FastAPI Backend logs. |
-| `2` | **WhatsApp Logs** | Switch the active log pane view to the Baileys Gateway logs. |
-| `3` | **Web Logs** | Switch the active log pane view to the Vue Frontend logs. |
-| `c` | **Clear Log** | Clear the contents of the log file for the active tab. |
-| `?` | **Help** | Display the Help Overlay listing keyboard shortcuts. |
-| `Esc` | **Close Overlay** | Close any active modal (Help, QR Code, or Reset Confirmation). |
+```bash
+python -m src.evaluation.cli --output-report rag_eval_report.md
+```
 
----
+## Screenshots
 
-## 🔍 Core Features & Functionality
+Service overview:
+![Dashboard](docs/screenshots/web_dashboard.png)
 
-### 1. Per-Service Action Toggles & Port Listening
-* Each service card has an individual **Start/Stop** toggle button.
-* If a service is stopped, its status changes to `offline` and its status dot turns grey.
-* Clicking **Start** spawns the service in the background and sets its status dot to yellow (`booting` / `connecting`).
-* When active, the TUI queries endpoints to check connection health, changing the dot to green (`online` / `running` / `authenticated`).
+Knowledge base (PDFs ingested into ChromaDB):
+![Knowledge Base](docs/screenshots/web_knowledge.png)
 
-### 2. Connection Health & Live Metrics Indicators
-The dashboard gathers live telemetry from the services and updates the UI cards in real time:
-* **FastAPI Backend:** Displays total HTTP request count (excluding poll requests) and the time elapsed since the last request (e.g. `2 reqs, last: 12s ago`).
-* **WhatsApp Gateway:** Displays current connection uptime, message transmission count (e.g. `10m 5s, 42 msgs`), and details on configuration/network errors.
-* **Web Dashboard:** Monitors the Vite hot-reloading dev server and reports active client browser connections.
+Phone inventory:
+![Inventory](docs/screenshots/web_products.png)
 
-### 3. Integrated Real-Time Logging System
-* Logs for each service are piped into central, designated log files inside the `logs/` folder (`fastapi.log`, `baileys.log`, `frontend.log`).
-* **TUI Logging & Standalone Compatibility:** Spawning services via the TUI injects `R2CELL_TUI=true` into the environment. When detected, the service prints output straight to stdout (which the TUI intercepts and writes to the log file). When services are run manually via the console, they write directly to their log files to prevent log duplication.
-* **Tailing Engine:** A background asyncio worker reads new log lines every 300ms, coloring lines containing `ERROR`/`FAIL` (red), `WARN` (yellow), and `SUCCESS` (green) for quick diagnostic readability.
+LangGraph visualizer:
+![Graph](docs/screenshots/web_graph.png)
 
-### 4. Interactive QR Takeover Modal
-* When the Baileys connector enters the `QR_PENDING` state, the TUI intercepts the state change and automatically overlays a **prominent QR Code Modal Screen**.
-* **Double-Width Half-Blocks:** The QR code is printed using Unicode block elements (`▀▀`, `▄▄`, `██`, `  `). This double-width rendering ensures a perfect square aspect ratio on all terminal fonts and line layouts.
-* **Color Mapping:** The QR code blocks are rendered in black text on a white widget background. This matches the standard QR code structure, ensuring it scans instantly with any mobile device camera.
-* **Auto-refresh and Timeout:** Features a **60-second countdown timer** that ticks down to inform the user of QR freshness. The timer automatically resets to 60s whenever Baileys publishes a new QR string, and the modal automatically dismisses once the connection becomes `AUTHENTICATED`.
-
-### 5. Secure Session Reset Dialog
-* Clicking the **Reset WhatsApp** button prompts the user with a confirmation screen.
-* Confirming the reset fires a `POST /wa/reset-session` request to the backend.
-* The backend stops the running Node process by PID, wipes the `auth_info_baileys` credentials folder clean, and restarts Node to display a fresh scan QR code.
-
-### 6. Unexpected Disconnect Flash Alerts
-* If the WhatsApp state transitions from `AUTHENTICATED` to `DISCONNECTED` unexpectedly (e.g. when logged out from linked devices on a phone), the TUI acts immediately:
-  * Triggers a warning toast notification at the bottom right.
-  * Flashes the border of the WhatsApp Gateway card in red with a double-line border styling (`.flash-error`) to capture the user's attention.
-
----
-
-## 🌐 Web Admin Dashboard
-
-In addition to the terminal console, a premium **Web Admin Dashboard** is provided to manage the bot's stateful memories, configure RAG files, and monitor conversations.
-
-### 1. Ingested Files (RAG Document Explorer)
-* **PDF Upload & Ingestion**: Drop or select PDF documents (catalogs, specifications, company profiles). The backend automatically splits, embeds, and indexes them into ChromaDB.
-* **Inline PDF Preview Modal**: Preview documents directly within the dashboard. The PDF is fetched, converted to a Base64-encoded string, and served as a local Blob URL, completely evading Internet Download Manager (IDM) interception.
-* **Delete & Re-index**: Delete documents to instantly purge their corresponding vector embeddings from ChromaDB.
-
-### 2. Conversations Manager (Memory Reset Control)
-* **Real-Time Thread Inspection**: Fetches active client JIDs (phone numbers) and turns directly from the SQLite `checkpoints` database.
-* **Chronological Chat Bubbles**: View full dialogue histories in user vs. bot chat bubbles.
-* **AI Session Memory Wiping**: Reset the AI's conversation memory for a single contact or globally. This deletes checkpoint records, letting the chatbot start fresh next time the user messages the WhatsApp gateway.
-
-### 3. Phone Inventory Panel & Draggable Modal
-* **Stock & SKU Management**: Browse the entire database inventory of phones. Filter by brand, cosmetic grade, or search by model name.
-* **Draggable Modal Form**: Add new devices or edit prices/stock levels using a fully custom draggable modal panel. This modal uses reactive mouse event-listeners, allowing administrators to position it anywhere on their screen without obstructing data views.
-
-### 4. COD Bookings Panel
-* **Appointment Tracking**: View all COD meetups scheduled by the WhatsApp AI. Inspect customer details, selected device models, schedule dates/times, and price details.
-* **Status Transition Control**: Update appointment statuses (Pending, Confirmed, Completed, Cancelled) dynamically from a dropdown selector.
-
-### 5. Interactive Graph Visualizer with Tool Node Details
-* **Flow State Inspection**: Monitors active conversation paths on the compiled LangGraph in real time.
-* **Dynamic Tools List**: The `tools` execution node in the flow diagram lists active agent tools: **Knowledge Base RAG**, **Product Stock Query**, **COD Booking Engine**, and **Bandung Maps Location**.
-
-### 6. Mobile Responsiveness & Aesthetics
-* **Responsive Layout Shifts**: Uses a responsive split layout. On mobile screens (< 768px), large data lists and tables automatically collapse into clean card layouts.
-* **Native-Feeling Mobile Chat**: On mobile viewports, the Conversations panel switches between a list view and a chat logs view (equipped with a header back button) mimicking a native mobile chat application.
-* **Slate/Zinc Minimalist Styling**: Supports a cohesive dark and light theme toggle using Tailwind CSS v4 variant classes and standard zinc palettes (free of high-contrast glow shadows or neon outlines).
-
----
-
-## 📁 File Structure
+## Project Structure
 
 ```plaintext
-ai-r2cell/
-├── admin-dashboard/         # Vue 3 / Vite Web Client
-│   ├── src/
-│   │   ├── components/      
-│   │   │   ├── products/
-│   │   │   │   └── ProductModal.vue # Draggable modal form for products
-│   │   │   ├── DocumentTable.vue
-│   │   │   ├── Navbar.vue
-│   │   │   ├── Sidebar.vue
-│   │   │   └── PdfPreviewModal.vue
-│   │   ├── layouts/         # DashboardLayout
-│   │   ├── router/          # Vue Router configuration
-│   │   ├── views/           
-│   │   │   ├── DashboardView.vue
-│   │   │   ├── KnowledgeBaseView.vue
-│   │   │   ├── ConversationsView.vue
-│   │   │   ├── ProductsView.vue  # Phone Inventory Panel
-│   │   │   ├── BookingsView.vue  # COD Bookings Panel
-│   │   │   ├── GraphView.vue     # Dynamic Graph Visualizer
-│   │   │   └── GatewayView.vue
-│   │   ├── App.vue          # Root Vue component
-│   │   ├── main.js          # Vite client entrypoint
-│   │   └── style.css        # Tailwind CSS import & theme variants
-│   └── package.json
-│
-├── logs/                    # Central log directory
-│   ├── fastapi.log          # FastAPI server logs
-│   ├── baileys.log          # Baileys gateway logs
-│   └── frontend.log         # Web frontend dev logs
-│
-├── src/
-│   ├── api/
-│   │   ├── bookings.py      # REST endpoints for bookings
-│   │   ├── chat.py          
-│   │   ├── documents.py     
-│   │   ├── gateway.py       
-│   │   ├── graph.py         
-│   │   └── products.py      # REST endpoints for products
-│   │
-│   ├── core/
-│   │   ├── database.py      # SQLite connection & table seeding
-│   │   ├── event_bus.py     
-│   │   ├── gateway_state.py 
-│   │   ├── metrics.py       
-│   │   └── vectorstore.py
-│   │
-│   ├── integrations/
-│   │   └── whatsapp/
-│   │       └── whatsapp.js  # Node.js Baileys connector
-│   │
-│   ├── tools/
-│   │   ├── booking.py       # LangChain tools for product query, booking & location
-│   │   └── search.py        
-│   │
-│   ├── main.py              # FastAPI server & route registration
-│   │
-│   └── tui/                 # Terminal UI module
-│       ├── app.py           # DashboardApp application driver
-│       ├── widgets.py       # Custom Modals, QR display, and confirmations
-│       └── theme.tcss       # Clean minimal dark-mode layout styling
-│
-└── tui.py                   # Terminal UI entrypoint script
+admin-dashboard/          Vue 3 admin (overview, knowledge base, chats, graph, gateway, products, bookings)
+src/
+  agents/main_agent/      state, nodes, graph, prompts
+  api/                    REST endpoints (chat, documents, products, bookings, gateway, graph)
+  core/                   llm.py, vectorstore.py, database.py, metrics, event bus
+  tools/                  LangChain tools (RAG, products, booking, location)
+  evaluation/             Ragas evaluation pipeline
+  integrations/whatsapp/  Baileys gateway (whatsapp.js)
+  tui/                    terminal dashboard
+  data/                   source PDFs + chroma_db
+tui.py                    TUI entrypoint
 ```

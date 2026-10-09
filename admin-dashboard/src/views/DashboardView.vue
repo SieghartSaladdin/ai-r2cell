@@ -45,7 +45,7 @@
         <div class="flex items-end gap-3">
           <p class="text-4xl font-bold text-zinc-900 dark:text-zinc-100">{{ statusData?.baileys?.message_count || 0 }}</p>
         </div>
-        <p class="text-xs text-zinc-400 dark:text-zinc-500 mt-2">Powered by Ollama</p>
+        <p class="text-xs text-zinc-400 dark:text-zinc-500 mt-2">Powered by COMBO_GEMINI</p>
       </div>
 
       <!-- Stat Card 3: RAG Documents -->

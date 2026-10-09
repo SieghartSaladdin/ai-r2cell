@@ -11,7 +11,7 @@ from src.evaluation.pipeline import run_evaluation, generate_report
 def main():
     parser = argparse.ArgumentParser(description="Automated Ragas RAG Validation Pipeline")
     parser.add_argument("--dataset-path", type=str, default=None, help="Path to evaluation JSON/CSV file")
-    parser.add_argument("--provider", type=str, default=None, help="LLM provider: 'ollama' or 'openai'")
+    parser.add_argument("--provider", type=str, default=None, help="LLM provider: 'router' (default, from .env) or 'openai'")
     parser.add_argument("--llm-model", type=str, default=None, help="Model name for LLM judge")
     parser.add_argument("--embed-model", type=str, default=None, help="Model name for embeddings client")
     parser.add_argument("--output-report", type=str, default="rag_eval_report.md", help="Path to write markdown validation report")

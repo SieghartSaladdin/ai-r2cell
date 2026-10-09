@@ -1,42 +1,60 @@
 import json
+import os
 import pandas as pd
 from datasets import Dataset
 from typing import List, Dict, Any
 
+QUESTIONS_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "questions.json")
+
+
+def build_rag_dataset(questions: List[Dict[str, str]]) -> Dataset:
+    """
+    Builds a Ragas dataset by running the real system on each question:
+    - contexts: the chunks the knowledge-base tool would hand to the LLM (same relevance threshold),
+    - answer: the final reply of the compiled main agent graph.
+    `questions` items need `question` and `ground_truth`. Temporary eval threads are removed afterwards.
+    """
+    # Imported lazily: loading the graph opens the checkpoint DB and the vector store.
+    from langchain_core.messages import HumanMessage
+    from src.agents.main_agent import main_graph
+    from src.agents.main_agent.graph import db_conn
+    from src.core.vectorstore import get_vector_store
+    from src.tools.search import MIN_RELEVANCE, SEARCH_K
+
+    store = get_vector_store()
+    data = {"question": [], "contexts": [], "answer": [], "ground_truth": []}
+    thread_ids = []
+    try:
+        for i, item in enumerate(questions):
+            question = item["question"]
+            scored = store.similarity_search_with_relevance_scores(question, k=SEARCH_K)
+            contexts = [doc.page_content for doc, score in scored if score >= MIN_RELEVANCE]
+
+            thread_id = f"test_eval_{i}"
+            thread_ids.append(thread_id)
+            state = main_graph.invoke(
+                {"messages": [HumanMessage(content=question)]},
+                config={"configurable": {"thread_id": thread_id}, "recursion_limit": 12},
+            )
+            data["question"].append(question)
+            data["contexts"].append(contexts)
+            data["answer"].append(state["messages"][-1].content)
+            data["ground_truth"].append(item["ground_truth"])
+    finally:
+        for thread_id in thread_ids:
+            db_conn.execute("DELETE FROM checkpoints WHERE thread_id = ?", (thread_id,))
+            db_conn.execute("DELETE FROM writes WHERE thread_id = ?", (thread_id,))
+        db_conn.commit()
+    return Dataset.from_dict(data)
+
+
 def get_fallback_dataset() -> Dataset:
     """
-    Returns a Ragas-compliant Hugging Face Dataset containing sample RAG outputs 
-    for validation.
+    Default dataset: the R2Cell business questions in questions.json, answered live by the system.
     """
-    data = {
-        "question": [
-            "What is a R2CELL bot signature?",
-            "How does ChromaDB persist vector embeddings?",
-            "What is the LangGraph checkpointer SQLite database used for?"
-        ],
-        "contexts": [
-            [
-                "R2CELL uses bot signatures to uniquely identify cell signatures and conversation states on the WhatsApp network. This allows multi-user chat routing."
-            ],
-            [
-                "ChromaDB is a vector database that persists documents and their embeddings on disk. By default, it stores index structures in a persistently mapped DB folder."
-            ],
-            [
-                "LangGraph checkpointers act as persistence layers. The SQLite checkpointer saves conversational state threads, messages, and variables, allowing bots to resume history."
-            ]
-        ],
-        "answer": [
-            "A R2CELL bot signature is a unique identifier used to manage cell signatures and user session states on WhatsApp for multi-user chat routing.",
-            "ChromaDB persists vector embeddings on disk. It saves both the indexed document chunks and their generated vector mappings inside a persistent DB directory.",
-            "The LangGraph SQLite checkpointer database is used to store active session history, message logs, and state variables across conversations."
-        ],
-        "ground_truth": [
-            "R2CELL bot signatures identify cell signatures and user states on WhatsApp to perform multi-user chat routing.",
-            "ChromaDB persists documents and embeddings on disk in a persistent DB folder.",
-            "LangGraph SQLite checkpointer saves thread message history and state variables so the chatbot can resume conversations."
-        ]
-    }
-    return Dataset.from_dict(data)
+    with open(QUESTIONS_PATH, "r", encoding="utf-8") as f:
+        return build_rag_dataset(json.load(f))
+
 
 def load_evaluation_dataset(path: str = None, df: pd.DataFrame = None) -> Dataset:
     """

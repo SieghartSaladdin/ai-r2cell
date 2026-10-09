@@ -8,9 +8,10 @@ load_dotenv()
 def get_judge_llm(provider: str = None, model: str = None) -> BaseChatModel:
     """
     Initializes the LangChain chat model based on the selected provider.
-    Supports 'ollama' and 'openai' (or OpenAI-compatible local/cloud APIs).
+    Supports 'router' (default: the same OpenAI-compatible router the app uses, see .env)
+    and 'openai' (OpenAI or another OpenAI-compatible API configured via OPENAI_* variables).
     """
-    provider = provider or os.getenv("RAG_EVAL_PROVIDER", "ollama").lower()
+    provider = provider or os.getenv("RAG_EVAL_PROVIDER", "router").lower()
     
     if provider == "openai":
         from langchain_openai import ChatOpenAI
@@ -19,17 +20,21 @@ def get_judge_llm(provider: str = None, model: str = None) -> BaseChatModel:
         base_url = os.getenv("OPENAI_API_BASE")  # Support custom proxy or local vLLM/Ollama endpoints
         return ChatOpenAI(model=model, api_key=api_key, base_url=base_url, temperature=0.0)
     else:
-        # Default to local/cloud Ollama instance
-        from langchain_ollama import ChatOllama
-        base_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
-        model = model or os.getenv("RAG_EVAL_LLM_MODEL", "gemma4:31b-cloud")
-        return ChatOllama(model=model, base_url=base_url, temperature=0.0)
+        from langchain_openai import ChatOpenAI
+        model = model or os.getenv("RAG_EVAL_LLM_MODEL") or os.getenv("LLM_MODEL", "COMBO_GEMINI")
+        return ChatOpenAI(
+            model=model,
+            api_key=os.getenv("LLM_API_KEY"),
+            base_url=os.getenv("LLM_API_BASE_URL"),
+            temperature=0.0,
+            timeout=120,
+        )
 
 def get_judge_embeddings(provider: str = None, model: str = None) -> Embeddings:
     """
     Initializes the LangChain embeddings client.
     """
-    provider = provider or os.getenv("RAG_EVAL_PROVIDER", "ollama").lower()
+    provider = provider or os.getenv("RAG_EVAL_PROVIDER", "router").lower()
     
     if provider == "openai":
         from langchain_openai import OpenAIEmbeddings
@@ -38,11 +43,14 @@ def get_judge_embeddings(provider: str = None, model: str = None) -> Embeddings:
         base_url = os.getenv("OPENAI_API_BASE")
         return OpenAIEmbeddings(model=model, api_key=api_key, base_url=base_url)
     else:
-        # Default to Ollama embeddings
-        from langchain_ollama import OllamaEmbeddings
-        base_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
-        model = model or os.getenv("RAG_EVAL_EMBED_MODEL", "embeddinggemma:latest")
-        return OllamaEmbeddings(model=model, base_url=base_url)
+        from langchain_openai import OpenAIEmbeddings
+        model = model or os.getenv("RAG_EVAL_EMBED_MODEL") or os.getenv("EMBEDDING_MODEL", "gemini/gemini-embedding-2-preview")
+        return OpenAIEmbeddings(
+            model=model,
+            api_key=os.getenv("LLM_API_KEY"),
+            base_url=os.getenv("LLM_API_BASE_URL"),
+            check_embedding_ctx_length=False,
+        )
 
 def get_ragas_wrappers(provider: str = None, llm_model: str = None, embed_model: str = None):
     """
