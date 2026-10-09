@@ -11,11 +11,11 @@ To maximize debugging efficiency, maintainability, and scalability, all developm
 ### A. Agent-Based Structure
 All workflows, state machines, and specialized agent reasoning loops must be isolated within their own subdirectories under the `/src/agents/` prefix.
 * **Standard Pattern**: `/src/agents/<agent_name>/`
-* **Example**: `/src/agents/rag_agent/` or `/src/agents/customer_service_seller/`
+* **Example**: `/src/agents/main_agent/` or `/src/agents/customer_service_seller/`
 * **Rule**: Keep agent-specific business logic, internal validation, and workflow states contained inside their respective agent directory.
 
 ### B. Separation of Graph Concerns
-Inside each individual agent module (e.g., `/src/agents/rag_agent/`), you must strictly separate logic into the following dedicated files:
+Inside each individual agent module (e.g., `/src/agents/main_agent/`), you must strictly separate logic into the following dedicated files:
 1. **`state.py`**: Defines the `GraphState` schemas (using `TypedDict`, `Pydantic`, or Python typing classes) and custom reducers (like `add_messages`).
 2. **`nodes.py`**: Contains the execution node functions that perform computations, query tools, or call LLMs. Nodes should consume the state, perform a single task, and return updated state attributes.
 3. **`graph.py`**: Handles building the `StateGraph` builder, defining all nodes, connecting them with entry points, edges, and conditional routing, and compiling the final graph (with checkpointers or memory).
@@ -62,7 +62,7 @@ ai-r2cell/
     │
     ├── agents/           # Specialized agent modules
     │   ├── __init__.py
-    │   └── rag_agent/    # RAG agent module
+    │   └── main_agent/   # Main agent module
     │       ├── __init__.py
     │       ├── state.py  # GraphState definition
     │       ├── nodes.py  # Node functions

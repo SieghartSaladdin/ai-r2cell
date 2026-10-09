@@ -1,0 +1,42 @@
+[
+  {
+    "question": "Apa bedanya Grade A dan Grade B?",
+    "ground_truth": "Grade A mendekati baru (near-mint): hanya ada goresan mikroskopis yang terlihat jika diamati sangat dekat dan tidak ada penyok. Grade B menunjukkan tanda pemakaian ringan: ada goresan tipis pada layar atau bagian belakang dan sedikit kelupas cat halus di sudut frame, tetapi tidak ada kaca yang retak."
+  },
+  {
+    "question": "Berapa lama garansi resmi untuk perangkat di R2Cell?",
+    "ground_truth": "R2Cell memberikan garansi resmi 90 hari untuk fungsionalitas hardware dan software."
+  },
+  {
+    "question": "Berapa banyak titik uji diagnostik yang dilewati setiap perangkat?",
+    "ground_truth": "Setiap perangkat wajib melewati 40 titik uji diagnostik (hardware dan software)."
+  },
+  {
+    "question": "Grade C+ itu apa dan bedanya dengan Grade C?",
+    "ground_truth": "Grade C+ adalah grade khusus di antara Grade B dan Grade C. Kondisi fisiknya memiliki goresan yang terlihat jelas atau penyok kecil di sudut bodi, tetapi bebas dari cacat berat seperti retak halus atau korosi luas, dan tampilannya lebih bersih dibanding Grade C biasa."
+  },
+  {
+    "question": "Grade C cocok untuk siapa?",
+    "ground_truth": "Grade C cocok untuk pengguna dengan anggaran ketat, pengemudi ojek online, atau sebagai handphone cadangan, karena penampilan fisik bukan prioritas utama."
+  },
+  {
+    "question": "Bagaimana cara membeli dalam jumlah banyak untuk reseller?",
+    "ground_truth": "Untuk pembelian grosir di atas 10 perangkat, kirim email ke b2b@r2cell.com untuk mendapatkan diskon volume dan pengiriman yang disesuaikan."
+  },
+  {
+    "question": "Berapa battery health minimal untuk Like New dan Grade A?",
+    "ground_truth": "Like New memiliki battery health 90% atau lebih tinggi, sedangkan Grade A 85% atau lebih tinggi."
+  },
+  {
+    "question": "Di mana saya bisa memesan secara individual?",
+    "ground_truth": "Pesanan individual bisa dilakukan di toko ritel flagship R2Cell atau lewat toko online di www.r2cell.com."
+  },
+  {
+    "question": "Kenapa Grade B disebut pilihan paling populer?",
+    "ground_truth": "Grade B menawarkan keseimbangan terbaik antara estetika dan harga yang terjangkau, cocok untuk pengguna praktis yang biasanya langsung memasang tempered glass dan casing sehingga tanda pemakaian tidak terlihat."
+  },
+  {
+    "question": "Apakah perangkat Grade C fungsinya tetap normal?",
+    "ground_truth": "Ya. Semua perangkat dari Like New hingga Grade C lulus uji 40 parameter fungsionalitas dan berfungsi normal; performa mesin Grade C sama baiknya dengan Like New."
+  }
+]

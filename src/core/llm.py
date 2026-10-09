@@ -1,26 +1,43 @@
 import os
 from dotenv import load_dotenv
-from langchain_ollama import ChatOllama
+from langchain_openai import ChatOpenAI
 
 # Load environment variables if any
 load_dotenv()
 
-# Get Ollama base URL if specified, otherwise default to local
-OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
-MODEL_NAME = "gemma4:31b-cloud"
+# OpenAI-compatible router configuration (see .env)
+LLM_API_BASE_URL = os.getenv("LLM_API_BASE_URL", "https://ai.qifor.my.id/v1")
+LLM_API_KEY = os.getenv("LLM_API_KEY", "")
+MODEL_NAME = os.getenv("LLM_MODEL", "COMBO_GEMINI")
 
-def get_llm(temperature: float = 0.7) -> ChatOllama:
+def get_llm(temperature: float = 0.7) -> ChatOpenAI:
     """
-    Initializes and returns a ChatOllama LLM client configured for the gemma4:31b-cloud model.
+    Initializes and returns a ChatOpenAI client pointed at the OpenAI-compatible router
+    and configured for the model named by MODEL_NAME.
     """
     try:
-        # ChatOllama connects to the local Ollama instance
-        return ChatOllama(
+        return ChatOpenAI(
             model=MODEL_NAME,
-            base_url=OLLAMA_BASE_URL,
+            base_url=LLM_API_BASE_URL,
+            api_key=LLM_API_KEY,
             temperature=temperature,
-            verbose=True
+            timeout=90,
+            max_retries=2,
         )
     except Exception as e:
-        print(f"Error initializing ChatOllama model {MODEL_NAME}: {e}")
+        print(f"Error initializing ChatOpenAI model {MODEL_NAME}: {e}")
         raise e
+
+
+def warmup_llm() -> None:
+    """
+    Sends one tiny request to the router so the first real customer message doesn't pay the
+    cold-start cost of the model behind it. Failures are logged and ignored: warm-up is best effort.
+    """
+    import time
+    start = time.time()
+    try:
+        get_llm(temperature=0).bind(max_tokens=5).invoke("ping")
+        print(f"[LLM] Warm-up OK in {time.time() - start:.1f}s")
+    except Exception as e:
+        print(f"[LLM] Warm-up failed (ignored): {e}")

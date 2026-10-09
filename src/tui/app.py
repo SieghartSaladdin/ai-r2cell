@@ -33,7 +33,7 @@ class DashboardApp:
         self.frontend_metrics = {"active_connections": 0}
 
         self.statuses = {"FastAPI": "offline", "Baileys": "offline", "Frontend": "offline"}
-        self.uptimes = {"FastAPI": 0, "Baileys": 0, "Frontend": 0}
+        self.uptimes: dict[str, float] = {"FastAPI": 0.0, "Baileys": 0.0, "Frontend": 0.0}
         self.procs = {"FastAPI": None, "Baileys": None, "Frontend": None}
 
         # Menu
@@ -89,7 +89,7 @@ class DashboardApp:
         self.body_control = FormattedTextControl(self._render_body)
 
         self.layout_container = HSplit([
-            Window(content=self.header_control, height=4),
+            Window(content=self.header_control, height=5),
             Window(content=self.body_control),
         ])
 
@@ -147,7 +147,8 @@ class DashboardApp:
         @self.kb.add("y")
         def _(event):
             if self.current_view == "confirm_quit":
-                self.pt_app.exit()
+                if self.pt_app:
+                    self.pt_app.exit()
             elif self.current_view == "confirm_reset":
                 asyncio.create_task(self._reset_wa())
 
@@ -395,14 +396,15 @@ class DashboardApp:
             if self.pt_app:
                 self.pt_app.invalidate()
 
-            with open(log_file, "a", encoding="utf-8", errors="replace") as f:
-                async for raw in proc.stdout:
-                    line = raw.decode("utf-8", errors="replace")
-                    # Filter internal polling noise
-                    if any(k in line for k in ("/api/internal/status", "/wa/status", "/logs/")):
-                        continue
-                    f.write(line)
-                    f.flush()
+            if proc.stdout is not None:
+                with open(log_file, "a", encoding="utf-8", errors="replace") as f:
+                    async for raw in proc.stdout:
+                        line = raw.decode("utf-8", errors="replace")
+                        # Filter internal polling noise
+                        if any(k in line for k in ("/api/internal/status", "/wa/status", "/logs/")):
+                            continue
+                        f.write(line)
+                        f.flush()
 
             await proc.wait()
         except Exception as e:
@@ -411,7 +413,7 @@ class DashboardApp:
 
         self.procs[tag] = None
         self.statuses[tag] = "offline"
-        self.uptimes[tag] = 0
+        self.uptimes[tag] = 0.0
         if self.pt_app:
             self.pt_app.invalidate()
 
@@ -421,7 +423,7 @@ class DashboardApp:
             self._kill_tree(proc)
             self.procs[tag] = None
         self.statuses[tag] = "offline"
-        self.uptimes[tag] = 0
+        self.uptimes[tag] = 0.0
 
     def _kill_tree(self, proc):
         if not proc:
@@ -461,7 +463,10 @@ class DashboardApp:
             self._kill(tag)
         wa_pid = self.wa_metrics.get("pid", 0)
         if wa_pid:
-            self._kill_pid(wa_pid)
+            try:
+                self._kill_pid(int(wa_pid))
+            except (ValueError, TypeError):
+                pass
             asyncio.create_task(self._push_disconnected())
 
     def _restart_all(self):
